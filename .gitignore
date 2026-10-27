@@ -1,0 +1,22 @@
+# Rust
+/target/
+**/target/
+*.pdb
+
+# Driver build outputs / packages
+*.sys
+*.cat
+/driver/**/package/
+/dist/
+
+# Signing material — never commit
+*.pfx
+*.cer
+*.pvk
+*.spc
+
+# Editors / OS
+.vs/
+.vscode/
+*.swp
+Thumbs.db
