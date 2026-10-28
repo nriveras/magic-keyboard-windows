@@ -42,6 +42,8 @@ AddReg = MkHub_AddReg
 
 [MkHub_AddReg]
 HKR,,"LowerFilters",0x00010000,"vhf"
+; Control interface access: SYSTEM and Administrators full, interactive users read/write (config only).
+HKR,,"Security",,"D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGW;;;IU)"
 
 [MkHub_Inst.NT.Services]
 AddService = mkfilter,0x00000002,MkFilter_Service_Inst

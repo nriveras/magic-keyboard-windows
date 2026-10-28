@@ -19,12 +19,17 @@ const HIDP_STATUS_SUCCESS: i32 = 0x0011_0000;
 pub(crate) fn hid_interface_paths() -> io::Result<Vec<String>> {
     let mut guid: GUID = unsafe { zeroed() };
     unsafe { hid::HidD_GetHidGuid(&mut guid) };
+    interface_paths(&guid)
+}
+
+/// Paths of all present device interfaces of class `guid`.
+pub(crate) fn interface_paths(guid: &GUID) -> io::Result<Vec<String>> {
     loop {
         let mut len = 0u32;
         let cr = unsafe {
             CM_Get_Device_Interface_List_SizeW(
                 &mut len,
-                &guid,
+                guid,
                 std::ptr::null(),
                 CM_GET_DEVICE_INTERFACE_LIST_PRESENT,
             )
@@ -37,7 +42,7 @@ pub(crate) fn hid_interface_paths() -> io::Result<Vec<String>> {
         let mut buf = vec![0u16; len as usize];
         let cr = unsafe {
             CM_Get_Device_Interface_ListW(
-                &guid,
+                guid,
                 std::ptr::null(),
                 buf.as_mut_ptr(),
                 len,

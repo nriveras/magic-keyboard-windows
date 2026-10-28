@@ -1,5 +1,5 @@
-//! mk-probe: read-only diagnostics for Apple keyboards. It never writes output or feature
-//! reports to the device.
+//! mk-probe: diagnostics for Apple keyboards. It never writes output or feature reports to the
+//! device; `driver fnlock` is the only command that changes anything (the driver's config).
 
 #[cfg(not(windows))]
 fn main() {
@@ -24,7 +24,12 @@ usage: mk-probe <command>
   watch TAG           print input reports of one collection as they arrive (Ctrl+C stops)
   battery             current battery state of every Apple keyboard
   feature TAG ID      read one feature report, e.g. `feature MI_01&Col02 0x09` (never writes)
-  input-monitor       show what Windows receives (Raw Input keyboard + consumer control)";
+  input-monitor       show what Windows receives (Raw Input keyboard + consumer control)
+
+  driver status       mkfilter status (keyboards, Fn mode, virtual device)
+  driver config       configuration the keyboards run with
+  driver fnlock MODE  set the top row: `media` (media keys first) or `fkeys` (F1-F12 first)
+  driver watch        print every driver status change (Ctrl+C stops)";
 
     fn select(tag: Option<&str>) -> io::Result<Vec<Collection>> {
         let all = mk_hid::apple_collections()?;
@@ -213,6 +218,10 @@ fn main() -> std::process::ExitCode {
         ["battery"] => probe::battery(),
         ["feature", tag, id] => probe::feature(tag, id),
         ["input-monitor"] => rawinput::run(),
+        ["driver", "status"] => driver::status(),
+        ["driver", "config"] => driver::config(),
+        ["driver", "fnlock", mode] => driver::fnlock(mode),
+        ["driver", "watch"] => driver::watch(),
         _ => {
             eprintln!("{}", probe::USAGE);
             return std::process::ExitCode::from(2);
@@ -223,6 +232,70 @@ fn main() -> std::process::ExitCode {
         Err(e) => {
             eprintln!("error: {e}");
             std::process::ExitCode::FAILURE
+        }
+    }
+}
+
+#[cfg(windows)]
+mod driver {
+    use std::io;
+
+    use mk_core::config::FnMode;
+    use mk_core::proto::Status;
+    use mk_hid::control::Control;
+
+    fn print(s: &Status) {
+        println!(
+            "protocol {}  keyboards {}  last PID {:04X}  Fn mode {}  virtual device {}  generation {}",
+            s.protocol_version,
+            s.keyboards,
+            s.last_pid,
+            match FnMode::from_u8(s.fn_mode) {
+                Some(FnMode::MediaFirst) => "media first",
+                Some(FnMode::FKeysFirst) => "F-keys first",
+                None => "?",
+            },
+            if s.virtual_device_ready { "ready" } else { "missing" },
+            s.generation
+        );
+    }
+
+    pub fn status() -> io::Result<()> {
+        print(&Control::open()?.status()?);
+        Ok(())
+    }
+
+    pub fn config() -> io::Result<()> {
+        println!("{:#?}", Control::open()?.config()?);
+        Ok(())
+    }
+
+    pub fn fnlock(mode: &str) -> io::Result<()> {
+        let fn_mode = match mode {
+            "media" => FnMode::MediaFirst,
+            "fkeys" => FnMode::FKeysFirst,
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "MODE must be `media` or `fkeys`",
+                ));
+            }
+        };
+        let control = Control::open()?;
+        let mut config = control.config()?;
+        config.fn_mode = fn_mode;
+        control.set_config(&config)?;
+        print(&control.status()?);
+        Ok(())
+    }
+
+    pub fn watch() -> io::Result<()> {
+        let control = Control::open()?;
+        let mut status = control.status()?;
+        print(&status);
+        loop {
+            status = control.wait_status(status.generation)?;
+            print(&status);
         }
     }
 }

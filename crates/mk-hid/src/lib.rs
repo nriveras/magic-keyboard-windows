@@ -4,6 +4,7 @@
 #![cfg(windows)]
 
 pub mod battery;
+pub mod control;
 mod ffi;
 
 use std::fmt;

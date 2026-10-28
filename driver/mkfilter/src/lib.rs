@@ -12,9 +12,12 @@
 
 #![no_std]
 
+mod control;
 mod filter;
 mod hid;
 mod hub;
+mod registry;
+mod shared;
 
 use core::mem::size_of;
 
@@ -23,9 +26,8 @@ use wdk_sys::{
     _WDF_EXECUTION_LEVEL::WdfExecutionLevelInheritFromParent,
     _WDF_SYNCHRONIZATION_SCOPE::WdfSynchronizationScopeInheritFromParent,
     DEVICE_REGISTRY_PROPERTY::DevicePropertyHardwareID, NTSTATUS, PCUNICODE_STRING, PDRIVER_OBJECT,
-    PWDFDEVICE_INIT, ULONG, WDF_DRIVER_CONFIG, WDF_NO_HANDLE, WDF_NO_OBJECT_ATTRIBUTES,
-    WDF_OBJECT_ATTRIBUTES, WDFDEVICE, WDFDRIVER, WDFOBJECT, WDFSPINLOCK,
-    call_unsafe_wdf_function_binding,
+    PWDFDEVICE_INIT, ULONG, WDF_DRIVER_CONFIG, WDF_NO_OBJECT_ATTRIBUTES, WDF_OBJECT_ATTRIBUTES,
+    WDFDEVICE, WDFDRIVER, WDFOBJECT, WDFSPINLOCK, call_unsafe_wdf_function_binding,
 };
 
 #[cfg(not(test))]
@@ -87,6 +89,7 @@ pub unsafe extern "system" fn driver_entry(
         EvtDriverDeviceAdd: Some(evt_device_add),
         ..Default::default()
     };
+    let mut driver_handle: WDFDRIVER = core::ptr::null_mut();
     let status = unsafe {
         call_unsafe_wdf_function_binding!(
             WdfDriverCreate,
@@ -94,11 +97,11 @@ pub unsafe extern "system" fn driver_entry(
             registry_path,
             WDF_NO_OBJECT_ATTRIBUTES,
             &mut config,
-            WDF_NO_HANDLE.cast::<WDFDRIVER>()
+            &mut driver_handle
         )
     };
     if nt_success(status) {
-        // Driver-wide lock for the hub's VHF handle; parented to the driver object.
+        // Driver-wide lock for the shared state; parented to the driver object.
         let mut lock: WDFSPINLOCK = core::ptr::null_mut();
         let st = unsafe {
             call_unsafe_wdf_function_binding!(
@@ -108,7 +111,9 @@ pub unsafe extern "system" fn driver_entry(
             )
         };
         if nt_success(st) {
-            hub::set_lock(lock);
+            shared::set_lock(lock);
+            let config = unsafe { registry::read_config(driver_handle) };
+            shared::with(|s| s.config = config);
         } else {
             println!("mkfilter: driver lock creation failed {st:#010x}");
         }

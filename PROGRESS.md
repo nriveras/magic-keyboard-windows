@@ -44,8 +44,12 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Filter submits virtual outputs under the device lock; engine timer (Fn double-tap); release-all on D0 exit
 - [x] install-dev creates `ROOT\MagicKbdHub`; uninstall-dev removes it
 - [x] Hardware test (USB): F8/F9 media, F10–F12 mute/volume, F3/F4/F5 Task View/Search/Dictation, Lock → Win+L, Fn+F-key = plain F-key
-- [ ] Hardware test: F7, Shift+F7–F9, F6 / Fn×3+Space sleep
-- [ ] Control interface IOCTLs
+- [x] Hardware test: F7, Shift+F7–F9, F6 / Fn×3+Space sleep
+- [x] Control interface on the hub (GET/SET_CONFIG, GET/WAIT_STATUS; SDDL: admins full, interactive users RW)
+- [x] Driver-wide shared state (config generation, keyboard count); config persisted to `Parameters\Config`
+- [x] Fn-lock double-tap published to status (not persisted)
+- [x] `mk-hid::control` client + `mk-probe driver status|config|fnlock|watch`
+- [ ] Hardware test: control interface (status, fnlock switch live, watch, persistence across replug)
 
 ## M6 — mk-app
 - [ ] Tray + battery + Fn lock toggle
