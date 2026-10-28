@@ -58,7 +58,7 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Hardware test: 029A remapping, media keys, Lock
 - [x] Settings window (`mk-app settings`, eframe 0.32): keys, modifiers + presets, F13–F19, app options, cheat sheet; Apply/Revert/Defaults
 - [x] app.toml (launchers, low-battery threshold) with live reload in the tray; per-keyboard battery in tray
-- [ ] Hardware test: settings window
+- [x] Hardware test: settings window
 
 ## M7 — Bluetooth
 - [ ] BT hardware IDs in INF, battery over BT, full test matrix
