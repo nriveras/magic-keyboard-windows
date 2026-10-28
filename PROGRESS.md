@@ -52,7 +52,8 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Hardware test: control interface (status, fnlock switch live, watch, persistence across replug; non-admin)
 
 ## M6 — mk-app
-- [ ] Tray + battery + Fn lock toggle
+- [x] Tray (Win32 Shell_NotifyIcon): battery icon + tooltip, low-battery balloon (≤20%), top-row mode toggle via control interface, autostart (HKCU Run), single instance, F16–F19 launchers
+- [ ] Hardware test: tray app
 - [ ] Settings window, config push, F16–F19 launchers, toasts, autostart, cheat sheet
 
 ## M7 — Bluetooth
