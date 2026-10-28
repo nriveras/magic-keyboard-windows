@@ -48,8 +48,11 @@ powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 
 This builds the release driver and the app, creates a System Restore point, installs the driver on
 every connected supported keyboard, installs the app to `%LOCALAPPDATA%\Programs\MagicKeyboardWindows`
-and starts it with Windows. Run it again after updating the sources, or after plugging a supported
-keyboard into a new USB port for the first time.
+and starts it with Windows. Run it again after updating the sources, after plugging a supported
+keyboard into a new USB port for the first time, or after pairing a keyboard over Bluetooth.
+
+When updating, the script usually ends with **"Restart Windows to load the new driver version"**:
+the previous driver keeps running until you restart.
 
 ## Use
 
