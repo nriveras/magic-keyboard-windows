@@ -59,12 +59,14 @@ Reproduce with `mk-probe caps`, `mk-probe battery`, `mk-probe feature MI_01&Col0
   silent even though it declares Play/Pause/FF/RW/Next/Prev. The firmware evidently sends the top row as
   F-keys, which possibly relates to feature `09` = 1 (unconfirmed, still never written).
 - Fn produces no event. kbdhid drops vendor usage `FF:0003`.
-- A second run (Fn presumably held) showed key-downs for `1`, F1–F12 and Ctrl **with no key-ups**. To be
-  confirmed: is this kbdhid mishandling releases while the Fn bit is set, or did the capture stop early?
-- Lock key (`0x19E`): no event captured yet.
+- **Fn held → key-ups are lost.** With Fn held, ⌫, F1, F2 and `1` each produced only a key-down (`BACK`, `F1`,
+  `F2`, `1`), with no key-up and no typematic repeat. Ctrl+C right afterwards had normal down/up pairs. Two runs
+  reproduced this. It suggests kbdhid mis-translates releases when the vendor Fn bit (`FF:0003`) is set in the report.
+- **Lock key (`0x19E`): no event at all.** kbdhid drops it, so the driver must emit Win+L through VHF.
+- **Driver requirement (M4):** rebuild every report passed to kbdhid from scratch with `HidP_SetUsages`, using
+  only keyboard-page usages. Never forward `FF:0003` Fn, consumer `0x40` Menu, `0x19E` Lock or `0xB8` Eject.
 
 ### Open questions
 - [ ] Byte offsets of report 01 (log it from the driver in M3).
 - [ ] Battery values while discharging over Bluetooth; meaning of usage 0x61.
 - [ ] Bluetooth hardware IDs and descriptor for the same keyboard (M7).
-- [ ] `input-monitor` follow-up: Lock key, Fn+⌫, key-ups while Fn is held

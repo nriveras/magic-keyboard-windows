@@ -13,7 +13,7 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] `list`, `caps`, `watch`, `battery`, `feature`, `input-monitor`
 - [x] Keyboard report logical range / layout recorded in HID-NOTES (0x00–0xFF array, 6KRO)
 - [x] Battery report decoded
-- [x] `input-monitor` baseline captured (F-row = plain F-keys; Lock/Fn-held follow-up open)
+- [x] `input-monitor` baseline captured (F-row = plain F-keys, Lock dropped, Fn-held loses key-ups)
 - [x] Boot Camp driver evaluation written up (KeyMagic 6.1.6700 has no 029F → not a fallback)
 
 ## M2 — mk-core engine
