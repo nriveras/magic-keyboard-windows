@@ -43,7 +43,11 @@ Reproduce with `mk-probe caps`, `mk-probe battery`, `mk-probe feature MI_01&Col0
 | 1 | modifier bits `E0..E7` (e.g. `08` = Left GUI / Left ⌘) |
 | 2 | reserved `00` |
 | 3–8 | 6-slot key array (page 07 usages) |
-| 9 | bit 0 Eject `0xB8`, **bit 1 Fn `FF:0003` (`02`)**, bit 2 Menu `0x40`, bit 3 Lock `0x19E` (assumed from descriptor index order) |
+| 9 | **bit 1 Fn `FF:0003` (`02`)**, **bit 2 = the Lock / Touch ID key (`04`)**; bits 0/3 presumably Eject `0xB8` / Menu `0x40` (not on this keyboard) |
+
+Bit 2 = Lock does not match a naive "data index order = bit order" reading (Lock is index 267, Menu 266).
+M4 must log `HidP_GetUsages` output for this byte once and confirm that the parser returns `0x19E` (not `0x40`)
+for `04`. If it returns `0x40`, the model table needs a per-PID override.
 
 Captured sequences:
 - Fn alone: `…00 02` → `…00 00`.
@@ -52,8 +56,8 @@ Captured sequences:
 - Left ⌘+A: byte 1 = `08`, then byte 3 = `04`.
 - **The firmware sends correct key releases while Fn is held** (the array clears and Fn stays set). The lost
   key-ups under stock drivers therefore come from kbdhid's handling of the vendor bit, not from the keyboard.
-- **Lock produced no report on this collection.** Either it wasn't pressed in this capture, or the A2520 sends
-  Lock elsewhere (candidates: `MI_02` Touch ID channel, `MI_00` vendor collections). To be rechecked.
+- Lock: `…00 04` → `…00 00` per press, with nothing else in the report. kbdhid drops it, which is why
+  `input-monitor` saw nothing.
 
 **Battery report `90` (`MI_00&Col02`)**
 - Bit order: `0x46` FullyCharged (idx 0), `0x44` Charging (idx 1), `0x61` (idx 2, unknown; maybe
@@ -87,6 +91,7 @@ Captured sequences:
 
 ### Open questions
 - [x] Byte offsets of report 01 (logged by the M3 driver; see above).
-- [ ] Where the Lock / Touch ID key is reported on the A2520 (not seen in report 01).
+- [x] Where the Lock / Touch ID key is reported on the A2520: report 01, byte 9 bit 2.
+- [ ] Confirm HidP maps byte 9 bit 2 to `0x19E` (M4 one-off log).
 - [ ] Battery values while discharging over Bluetooth; meaning of usage 0x61.
 - [ ] Bluetooth hardware IDs and descriptor for the same keyboard (M7).

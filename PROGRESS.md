@@ -27,7 +27,7 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Dev scripts: build-driver, install-dev (forced install), uninstall-dev(.cmd)
 - [x] INF installs as LowerFilter on keyboard TLC (USB, keyboard keeps working)
 - [x] Fn transitions visible in DebugView (byte 9 bit 1; report layout in HID-NOTES)
-- [ ] Lock key location (not in report 01; recheck)
+- [x] Lock key location (report 01, byte 9 bit 2)
 
 ## M4 — Driver remapping
 - [ ] mk-core wired into read completion
