@@ -335,8 +335,10 @@ mod tests {
 
     #[test]
     fn wire_roundtrip() {
-        let mut cfg = Config::default();
-        cfg.fn_mode = FnMode::FKeysFirst;
+        let mut cfg = Config {
+            fn_mode: FnMode::FKeysFirst,
+            ..Default::default()
+        };
         cfg.apply_preset(ModPreset::MacLikeShortcuts);
         cfg.f_ext[3] = 0;
         assert_eq!(Config::from_wire(&cfg.to_wire()), Ok(cfg));
