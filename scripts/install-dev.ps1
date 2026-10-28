@@ -10,7 +10,11 @@
 param(
     [ValidateSet('debug', 'release')]
     [string]$Profile = 'debug',
-    [string]$HardwareId = 'HID\VID_05AC&PID_029F&MI_01&Col01',
+    # Keyboard collections listed in mkfilter.inx; the filter is installed on each one present.
+    [string[]]$HardwareIds = @(
+        'HID\VID_05AC&PID_029F&MI_01&Col01',  # Magic Keyboard with Touch ID and Numeric Keypad
+        'HID\VID_05AC&PID_029A&MI_01&Col01'   # Magic Keyboard with Touch ID
+    ),
     [switch]$SkipRestorePoint
 )
 $ErrorActionPreference = 'Stop'
@@ -34,8 +38,10 @@ foreach ($f in $inf, $hubInf) {
     if (-not (Test-Path $f)) { throw "Package not found: $f (run scripts\build-driver.ps1 first)" }
 }
 
-$devices = @(Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like "$HardwareId\*" })
-if ($devices.Count -eq 0) { throw "No present device matches $HardwareId. Is the keyboard connected?" }
+$present = Get-PnpDevice -PresentOnly
+$devices = @($present | Where-Object { $id = $_.InstanceId; $HardwareIds | Where-Object { $id -like "$_\*" } })
+$presentIds = @($HardwareIds | Where-Object { $hw = $_; $present | Where-Object { $_.InstanceId -like "$hw\*" } })
+if ($devices.Count -eq 0) { throw "No supported keyboard is connected ($($HardwareIds -join ', '))." }
 
 # --- Restore point -------------------------------------------------------------------------
 if (-not $SkipRestorePoint) {
@@ -112,7 +118,7 @@ function Get-HubDevices {
 }
 
 # --- Install -------------------------------------------------------------------------------
-Install-Inf $HardwareId $inf
+foreach ($id in $presentIds) { Install-Inf $id $inf }
 
 if ((Get-HubDevices).Count -eq 0) {
     [MkDev.Native]::CreateRootDevice($HubHardwareId)

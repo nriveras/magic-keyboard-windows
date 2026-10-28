@@ -27,8 +27,9 @@ mkfilter.sys = 1,,
 %ManufacturerName% = MagicKbd,NT$ARCH$.10.0...16299
 
 [MagicKbd.NT$ARCH$.10.0...16299]
-; USB keyboard collections. Bluetooth IDs are added in M7 once confirmed on hardware.
+; USB keyboard collections (layout confirmed on hardware). Bluetooth IDs are added in M7.
 %A2520.DeviceDesc% = MkFilter_Inst, HID\VID_05AC&PID_029F&MI_01&Col01
+%A2449.DeviceDesc% = MkFilter_Inst, HID\VID_05AC&PID_029A&MI_01&Col01
 
 [MkFilter_Inst.NT]
 Include   = keyboard.inf
@@ -68,4 +69,5 @@ KmdfLibraryVersion = $KMDFVERSION$
 ManufacturerName  = "magic-keyboard-windows"
 DiskName          = "mkfilter Installation Disk"
 A2520.DeviceDesc  = "Apple Magic Keyboard with Touch ID and Numeric Keypad (mkfilter)"
+A2449.DeviceDesc  = "Apple Magic Keyboard with Touch ID (mkfilter)"
 SvcDesc           = "Magic Keyboard filter (mkfilter)"

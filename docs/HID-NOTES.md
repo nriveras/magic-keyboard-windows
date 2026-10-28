@@ -96,3 +96,10 @@ Captured sequences:
 - [ ] Lock usage on 029A/029C/032x (assumed same as 029F).
 - [ ] Battery values while discharging over Bluetooth; meaning of usage 0x61.
 - [ ] Bluetooth hardware IDs and descriptor for the same keyboard (M7).
+
+## Magic Keyboard with Touch ID — USB `05AC:029A` (2026-10-28)
+
+Same interface/collection layout as 029F (`mk-probe list`): `MI_01&Col01` keyboard (in 10 B, out 2 B),
+`MI_01&Col02` consumer (in 2 B, feature 4 B), `MI_01&Col03` vendor 64 B, `MI_02` Touch ID channel,
+`MI_00&Col01` vendor, `MI_00&Col02` battery (FF00:0014). Added to mkfilter.inx; Lock is assumed to report
+consumer `0x40` like 029F (`Model::lock_reports_menu`), to be confirmed in the hardware test.
