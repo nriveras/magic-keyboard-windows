@@ -30,8 +30,11 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Lock key location (report 01, byte 9 bit 2)
 
 ## M4 — Driver remapping
-- [ ] mk-core wired into read completion
-- [ ] Registry config load
+- [x] mk-core wired into read completion (HidP decode → engine → report rebuilt with page 07 only, spinlock)
+- [x] Registry config load (`Services\mkfilter\Parameters\Config`, REG_BINARY wire format; model defaults otherwise)
+- [x] ErrorRollOver instead of truncation when more keys than array slots
+- [ ] Hardware test: Fn+⌫/arrows/Return/Esc/P, F13–F15, no lost key-ups with Fn, HidP maps Lock to `0x19E`
+- Until M5 the top row is forced to F-keys first; media/shortcut/Lock outputs are logged and dropped.
 
 ## M5 — Hub + VHF
 - [ ] Root hub device + VHF descriptor
