@@ -106,13 +106,14 @@ public static void CreateRootDevice(string hardwareId) {
 
 # The inbox keyboard.inf outranks a test-signed package, so a plain 'pnputil /install' would not
 # switch the device over. UpdateDriverForPlugAndPlayDevices with INSTALLFLAG_FORCE does.
+$script:rebootNeeded = $false
 function Install-Inf([string]$Id, [string]$Path) {
     $reboot = $false
     if (-not [MkDev.Native]::UpdateDriverForPlugAndPlayDevicesW([IntPtr]::Zero, $Id, $Path, 1, [ref]$reboot)) {
         $err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
         throw ("UpdateDriverForPlugAndPlayDevices($Id) failed: 0x{0:X8}" -f $err)
     }
-    if ($reboot) { Write-Warning "Windows asks for a reboot to finish installing $Id." }
+    if ($reboot) { $script:rebootNeeded = $true }
 }
 
 function Get-HubDevices {
@@ -128,22 +129,6 @@ if ((Get-HubDevices).Count -eq 0) {
 }
 Install-Inf $HubHardwareId $hubInf
 
-# --- Load the new binary -------------------------------------------------------------------
-# The keyboards and the hub share one driver image. Windows reloads it only when every devnode
-# using it is stopped at the same time; restarting them one by one keeps the old code running.
-$users = @($devices) + (Get-HubDevices | Where-Object { $_.Status -eq 'OK' })
-$driver = { Get-CimInstance Win32_SystemDriver -Filter "Name='mkfilter'" }
-try {
-    $users | Disable-PnpDevice -Confirm:$false
-    for ($i = 0; $i -lt 20 -and (& $driver).State -ne 'Stopped'; $i++) { Start-Sleep -Milliseconds 250 }
-    if ((& $driver).State -ne 'Stopped') {
-        Write-Warning 'mkfilter did not unload; reboot to run the new version.'
-    }
-} finally {
-    # Always re-enable, even if disabling failed half-way: a disabled keyboard is unusable.
-    $users | Enable-PnpDevice -Confirm:$false
-}
-
 # --- Report --------------------------------------------------------------------------------
 foreach ($d in @($devices) + (Get-HubDevices)) {
     $props = Get-PnpDeviceProperty -InstanceId $d.InstanceId -KeyName `
@@ -152,4 +137,11 @@ foreach ($d in @($devices) + (Get-HubDevices)) {
     Write-Host "$($d.InstanceId)"
     Write-Host "  status: $($now.Status)  problem: $($now.Problem)"
     $props | ForEach-Object { Write-Host "  $($_.KeyName): $($_.Data)" }
+}
+
+# The keyboards and the hub share one driver image, which stays loaded while any of them runs, so
+# an update usually only takes effect after a restart. Windows says when that is the case.
+if ($script:rebootNeeded) {
+    Write-Host ''
+    Write-Warning 'Restart Windows to load the new driver version (the old one keeps running until then).'
 }
