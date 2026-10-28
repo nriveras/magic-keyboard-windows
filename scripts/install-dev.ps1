@@ -128,6 +128,22 @@ if ((Get-HubDevices).Count -eq 0) {
 }
 Install-Inf $HubHardwareId $hubInf
 
+# --- Load the new binary -------------------------------------------------------------------
+# The keyboards and the hub share one driver image. Windows reloads it only when every devnode
+# using it is stopped at the same time; restarting them one by one keeps the old code running.
+$users = @($devices) + (Get-HubDevices | Where-Object { $_.Status -eq 'OK' })
+$driver = { Get-CimInstance Win32_SystemDriver -Filter "Name='mkfilter'" }
+try {
+    $users | Disable-PnpDevice -Confirm:$false
+    for ($i = 0; $i -lt 20 -and (& $driver).State -ne 'Stopped'; $i++) { Start-Sleep -Milliseconds 250 }
+    if ((& $driver).State -ne 'Stopped') {
+        Write-Warning 'mkfilter did not unload; reboot to run the new version.'
+    }
+} finally {
+    # Always re-enable, even if disabling failed half-way: a disabled keyboard is unusable.
+    $users | Enable-PnpDevice -Confirm:$false
+}
+
 # --- Report --------------------------------------------------------------------------------
 foreach ($d in @($devices) + (Get-HubDevices)) {
     $props = Get-PnpDeviceProperty -InstanceId $d.InstanceId -KeyName `
