@@ -49,7 +49,7 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Driver-wide shared state (config generation, keyboard count); config persisted to `Parameters\Config`
 - [x] Fn-lock double-tap published to status (not persisted)
 - [x] `mk-hid::control` client + `mk-probe driver status|config|fnlock|watch`
-- [ ] Hardware test: control interface (status, fnlock switch live, watch, persistence across replug)
+- [x] Hardware test: control interface (status, fnlock switch live, watch, persistence across replug; non-admin)
 
 ## M6 — mk-app
 - [ ] Tray + battery + Fn lock toggle
