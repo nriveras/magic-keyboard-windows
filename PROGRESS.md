@@ -55,7 +55,7 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Tray (Win32 Shell_NotifyIcon): battery icon + tooltip, low-battery balloon (≤20%), top-row mode toggle via control interface, autostart (HKCU Run), single instance, F16–F19 launchers
 - [x] Hardware test: tray app
 - [x] Second model: 029A (Magic Keyboard with Touch ID) added to mkfilter.inx; install-dev installs on every present supported keyboard
-- [ ] Hardware test: 029A remapping, media keys, Lock
+- [x] Hardware test: 029A remapping, media keys, Lock
 - [ ] Settings window, config push, F16–F19 launchers, toasts, autostart, cheat sheet
 
 ## M7 — Bluetooth
