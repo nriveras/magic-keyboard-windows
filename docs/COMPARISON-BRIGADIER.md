@@ -22,7 +22,7 @@ Legend: ✅ supported · ❌ not supported · ⚠️ unverified or inconsistent 
 |---|---|---|
 | Driver signing / Secure Boot | ✅ **Apple-signed**; works with Secure Boot on. No test mode. | ❌ Self-signed. Needs **Secure Boot off + test-signing mode**, which shows a watermark and trips some anti-cheat. |
 | Works on non-Mac PCs | ⚠️ Unofficial. Apple only supports its drivers on Macs. | ✅ Designed for it. |
-| A2520 (Touch ID + numpad, PID 029F) support | ⚠️ Depends on which Boot Camp package you pull. Users report **volume keys not working** and the **keyboard tab missing** from the Boot Camp control panel. | 🛠️ Primary test device. HID layout already mapped ([HID-NOTES](HID-NOTES.md)). |
+| A2520 (Touch ID + numpad, PID 029F) support | ❌ **Not in the KeyMagic 6.1.6700 INF** (see spike result below). The driver doesn't bind, which fits the user reports of volume keys not working and the keyboard tab missing. | 🛠️ Primary test device. HID layout already mapped ([HID-NOTES](HID-NOTES.md)). |
 | Fn key detection | ✅ On supported models, inside Apple's driver. | 🛠️ Kernel filter reads usage `0x00FF:0x0003`. |
 | Media keys (F7–F9) | ⚠️ Needs the Boot Camp control-panel/tray process; reported broken on A2520. | 🛠️ Virtual HID device (VHF): handled natively by Windows, no app process required. |
 | Volume keys (F10–F12) | ⚠️ Reported not working on A2520. | 🛠️ Virtual consumer device; the keyboard itself has no volume usages. |
@@ -53,15 +53,29 @@ Legend: ✅ supported · ❌ not supported · ⚠️ unverified or inconsistent 
 
 ## Verdict
 
-- **Pick Boot Camp via Brigadier** if you need Secure Boot or anti-cheat compatibility and only want the basics, and it actually works for your model. On the A2520 that looks doubtful from user reports, but it costs little to test, and it is the **Secure-Boot-friendly fallback** named in the plan's M1.
+- **Pick Boot Camp (KeyMagic)** if you need Secure Boot or anti-cheat compatibility, only want the basics, **and own an older model** (0267, 026C or earlier). **It does not support the A2520** or any other 2021+ model: their PIDs are missing from the INF (see the spike result).
 - **Pick this project** for the full Magic Utilities feature set (media and volume keys that work, remapping, F13–F19, battery alerts) on a non-Mac PC, if you're willing to run in test-signing mode.
 - **Don't install both on the same keyboard.** Apple's keyboard filter and `mkfilter.sys` would both sit on the keyboard stack and double-translate Fn keys. Uninstall the Boot Camp keyboard driver before installing this project's driver.
 
-## Proposed spike (M1, read-only)
+## Spike result (M1, 2026-10-28, read-only)
 
-1. Run `brigadier.exe -m MacPro7,1 -o %TEMP%\bootcamp -k`. That downloads and unpacks the package **without installing**. The model is a guess: a late Intel Mac whose package should contain the 2021 keyboard drivers.
-2. Search the unpacked INFs for `PID_029F` / `0001004C` to see whether the A2520 is listed at all.
-3. Write the result into [HID-NOTES](HID-NOTES.md) and update the ⚠️ rows above.
+Checked package: `magickeyboard2_AppleKeyboardInstaller64.exe` from supermarsx/magickeyboard. It is a RAR SFX and
+was unpacked without being run. It contains Apple's **KeyMagic** driver: `Keymagic64.inf` / `Keymagic.sys`,
+**DriverVer 10/07/2016, 6.1.6700.0**, KMDF 1.11, Apple-signed catalog.
+
+- **Architecture: the same idea as this project.** KeyMagic is a KMDF `LowerFilters` driver on the keyboard
+  stack. It binds at the USB interface (`USBVID_05AC&PID_xxxx&MI_0x`) or the BT HID devnode
+  (`BTHENUM{00001124-…}_VID&0001004c_PID&xxxx`) and reads a per-model `KeyboardTable` from the registry.
+- **Supported PIDs** (71 total): 0205–0259, 025A, 025B, 0262–0264, **0267** (Magic Keyboard 2015),
+  **026C** (Magic Keyboard with numpad 2017), 0273, 0274, 0290, 0291 (internal MacBook keyboards).
+- **Not listed:** 029A, 029C, **029F (our A2520)**, 0320–0322. This driver won't bind to the 2021 or 2024
+  Magic Keyboards at all. That fits the user reports that media and volume keys don't work.
+- Not checked: the very latest Boot Camp ESD (6.1.x for 2020 Intel Macs) through Brigadier. Doing so needs
+  7-Zip and a download of several hundred MB. Since the repackaged "Magic Keyboard 2 and 3" driver above is
+  the one people use on PCs, the verdict below doesn't depend on it.
+
+**Conclusion:** for the A2520, Boot Camp is **not a working fallback**. The Secure-Boot-friendly fallback is
+the driverless mode in M8 (low-level hook, no Fn).
 
 ## Sources
 

@@ -14,7 +14,7 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Keyboard report logical range / layout recorded in HID-NOTES (0x00–0xFF array, 6KRO)
 - [x] Battery report decoded
 - [ ] `input-monitor` baseline captured (needs interactive key presses)
-- [ ] Boot Camp driver evaluation written up
+- [x] Boot Camp driver evaluation written up (KeyMagic 6.1.6700 has no 029F → not a fallback)
 
 ## M2 — mk-core engine
 - [x] Usage constants, KeyState, config model (64-byte wire format)
