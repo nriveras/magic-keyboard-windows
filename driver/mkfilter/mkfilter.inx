@@ -1,0 +1,71 @@
+;
+; mkfilter.inf - lower filter for the keyboard collection of Apple Magic Keyboards.
+;
+; Installs the inbox HID keyboard stack (kbdhid + kbdclass from keyboard.inf) and adds
+; mkfilter as a LowerFilter, i.e. between kbdhid and the hidclass PDO.
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = Keyboard
+ClassGuid   = {4D36E96B-E325-11CE-BFC1-08002BE10318}
+Provider    = %ManufacturerName%
+CatalogFile = mkfilter.cat
+DriverVer   =
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+mkfilter.sys = 1,,
+
+[Manufacturer]
+%ManufacturerName% = MagicKbd,NT$ARCH$.10.0...16299
+
+[MagicKbd.NT$ARCH$.10.0...16299]
+; USB keyboard collections. Bluetooth IDs are added in M7 once confirmed on hardware.
+%A2520.DeviceDesc% = MkFilter_Inst, HID\VID_05AC&PID_029F&MI_01&Col01
+
+[MkFilter_Inst.NT]
+Include   = keyboard.inf
+Needs     = HID_Keyboard_Inst.NT
+CopyFiles = MkFilter_CopyFiles
+
+[MkFilter_CopyFiles]
+mkfilter.sys
+
+[MkFilter_Inst.NT.HW]
+Include = keyboard.inf
+Needs   = HID_Keyboard_Inst.NT.HW
+AddReg  = MkFilter_AddReg
+
+[MkFilter_AddReg]
+HKR,,"LowerFilters",0x00010000,"mkfilter"
+
+[MkFilter_Inst.NT.Services]
+Include    = keyboard.inf
+Needs      = HID_Keyboard_Inst.NT.Services
+AddService = mkfilter,,MkFilter_Service_Inst
+
+[MkFilter_Service_Inst]
+DisplayName   = %SvcDesc%
+ServiceType   = 1               ; SERVICE_KERNEL_DRIVER
+StartType     = 3               ; SERVICE_DEMAND_START
+ErrorControl  = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary = %13%\mkfilter.sys
+
+[MkFilter_Inst.NT.Wdf]
+KmdfService = mkfilter, MkFilter_wdfsect
+
+[MkFilter_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+ManufacturerName  = "magic-keyboard-windows"
+DiskName          = "mkfilter Installation Disk"
+A2520.DeviceDesc  = "Apple Magic Keyboard with Touch ID and Numeric Keypad (mkfilter)"
+SvcDesc           = "Magic Keyboard filter (mkfilter)"

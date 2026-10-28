@@ -23,7 +23,8 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Unit (51) + property tests (no stuck keys, stable idle)
 
 ## M3 — Driver pass-through
-- [ ] Rust KMDF filter builds and signs (test cert)
+- [x] Rust KMDF filter builds and signs (test cert), pass-through + debug report log
+- [x] Dev scripts: build-driver, install-dev (forced install), uninstall-dev(.cmd)
 - [ ] INF installs as LowerFilter on keyboard TLC
 - [ ] Fn transitions visible in DebugView
 
