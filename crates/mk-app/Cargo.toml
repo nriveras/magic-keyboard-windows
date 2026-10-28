@@ -8,9 +8,12 @@ rust-version.workspace = true
 
 [dependencies]
 mk-core.workspace = true
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
 
 [target.'cfg(windows)'.dependencies]
 mk-hid = { path = "../mk-hid" }
+eframe = { version = "0.32", default-features = false, features = ["accesskit", "default_fonts", "glow"] }
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",

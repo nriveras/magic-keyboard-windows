@@ -9,20 +9,36 @@ use windows_sys::Win32::System::Registry::{
 };
 use windows_sys::Win32::System::Threading::CreateMutexW;
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
-use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    FindWindowW, PostMessageW, SW_SHOWNORMAL, WM_APP,
+};
+
+/// Window class of the tray's hidden window.
+pub const TRAY_CLASS: &str = "MagicKeyboardWindowsTray";
+/// Posted to the tray window when app.toml changed.
+pub const WM_RELOAD: u32 = WM_APP + 3;
 
 pub fn wide(s: &str) -> Vec<u16> {
     s.encode_utf16().chain(std::iter::once(0)).collect()
 }
 
-/// Holds the single-instance mutex for the process lifetime. `None` if another instance runs.
-pub fn single_instance() -> Option<HANDLE> {
-    let name = wide("Local\\MagicKeyboardWindowsTray");
+/// Creates a named mutex held for the process lifetime. `None` if another process holds it.
+pub fn named_mutex(name: &str) -> Option<HANDLE> {
+    let name = wide(name);
     let handle = unsafe { CreateMutexW(null(), 0, name.as_ptr()) };
     if handle.is_null() || unsafe { GetLastError() } == ERROR_ALREADY_EXISTS {
         None
     } else {
         Some(handle)
+    }
+}
+
+/// Tells a running tray to reload app.toml.
+pub fn notify_tray_reload() {
+    let class = wide(TRAY_CLASS);
+    let hwnd = unsafe { FindWindowW(class.as_ptr(), null()) };
+    if !hwnd.is_null() {
+        unsafe { PostMessageW(hwnd, WM_RELOAD, 0, 0) };
     }
 }
 
