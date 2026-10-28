@@ -65,12 +65,14 @@ Milestones from the project plan. Each completed item is committed to git.
 ## M7 — Bluetooth
 - [x] Both models paired; BT hardware IDs + collections recorded (HID-NOTES); battery readable over BT
 - [x] BT keyboard collections added to mkfilter.inx and install-dev
-- [ ] Hardware test over BT: remapping, media keys, Lock, battery in tray, reconnect after sleep / power cycle
+- [x] BT Fn is `FF01:0003` (USB `00FF:0003`); decoded since 6226db8
+- [x] Hardware test over BT (both models): Fn layer, media keys, Lock, battery in tray, reconnect after sleep / power cycle
 
 ## M8 — Packaging & docs
 - [x] Release driver build verified free of report logging (only lifecycle/error messages)
 - [x] `scripts\install.ps1` (release driver + app to `%LOCALAPPDATA%\Programs`, autostart) and `uninstall.ps1`/`uninstall.cmd`
 - [x] README: requirements, install, use, uninstall, recovery, privacy
-- [ ] Hardware test: install.ps1 / uninstall.cmd round trip
+- [x] Hardware test: install.ps1 (release driver + app, update needs one restart: shared driver image)
+- [ ] Hardware test: uninstall.cmd
 - [ ] Driver Verifier run
 - [ ] Driverless fallback mode (Secure Boot on)
