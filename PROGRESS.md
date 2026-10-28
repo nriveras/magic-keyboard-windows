@@ -43,7 +43,8 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Root hub device + VHF descriptor (keyboard ID 1, consumer ID 2, system control ID 3)
 - [x] Filter submits virtual outputs under the device lock; engine timer (Fn double-tap); release-all on D0 exit
 - [x] install-dev creates `ROOT\MagicKbdHub`; uninstall-dev removes it
-- [ ] Hardware test: media/volume/Task View/Search/Dictation/Sleep, Lock → Win+L, Shift+F7–F9
+- [x] Hardware test (USB): F8/F9 media, F10–F12 mute/volume, F3/F4/F5 Task View/Search/Dictation, Lock → Win+L, Fn+F-key = plain F-key
+- [ ] Hardware test: F7, Shift+F7–F9, F6 / Fn×3+Space sleep
 - [ ] Control interface IOCTLs
 
 ## M6 — mk-app
