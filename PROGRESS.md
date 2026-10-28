@@ -36,11 +36,14 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Hardware test (USB): Fn+⌫/arrows/Return/Esc/P, F13–F15, F1–F12, modifiers; no lost key-ups with Fn
 - [x] Lock arrives as consumer `0x40` → per-model override (`Model::lock_reports_menu`)
 - [x] Re-test: Lock no longer produces Apps/Menu; emits Win+L press/release (dropped until M5)
-- Until M5 the top row is forced to F-keys first; media/shortcut/Lock outputs are logged and dropped.
+- (M4 only: the top row was forced to F-keys first; removed in M5.)
 
 ## M5 — Hub + VHF
-- [ ] Root hub device + VHF descriptor
-- [ ] Media / volume / brightness / sleep / combos
+- [x] Same image, two roles (picked by hardware ID); `mkhub.inf` (System class, vhf lower filter) packaged by build-driver
+- [x] Root hub device + VHF descriptor (keyboard ID 1, consumer ID 2, system control ID 3)
+- [x] Filter submits virtual outputs under the device lock; engine timer (Fn double-tap); release-all on D0 exit
+- [x] install-dev creates `ROOT\MagicKbdHub`; uninstall-dev removes it
+- [ ] Hardware test: media/volume/Task View/Search/Dictation/Sleep, Lock → Win+L, Shift+F7–F9
 - [ ] Control interface IOCTLs
 
 ## M6 — mk-app

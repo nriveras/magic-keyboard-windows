@@ -1,0 +1,66 @@
+;
+; mkhub.inf - root-enumerated hub device for magic-keyboard-windows.
+;
+; Same driver image and service as mkfilter.inf, in its second role: function driver of
+; ROOT\MagicKbdHub with vhf.sys as lower filter. It owns the virtual HID device (keyboard,
+; consumer control, system control) that carries media keys, volume, sleep and shortcuts.
+; The devnode is created by scripts\install-dev.ps1.
+;
+
+[Version]
+Signature   = "$WINDOWS NT$"
+Class       = System
+ClassGuid   = {4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider    = %ManufacturerName%
+CatalogFile = mkhub.cat
+DriverVer   =
+PnpLockdown = 1
+
+[DestinationDirs]
+DefaultDestDir = 13
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+mkfilter.sys = 1,,
+
+[Manufacturer]
+%ManufacturerName% = MagicKbd,NT$ARCH$.10.0...16299
+
+[MagicKbd.NT$ARCH$.10.0...16299]
+%Hub.DeviceDesc% = MkHub_Inst, ROOT\MagicKbdHub
+
+[MkHub_Inst.NT]
+CopyFiles = MkHub_CopyFiles
+
+[MkHub_CopyFiles]
+mkfilter.sys
+
+[MkHub_Inst.NT.HW]
+AddReg = MkHub_AddReg
+
+[MkHub_AddReg]
+HKR,,"LowerFilters",0x00010000,"vhf"
+
+[MkHub_Inst.NT.Services]
+AddService = mkfilter,0x00000002,MkFilter_Service_Inst
+
+[MkFilter_Service_Inst]
+DisplayName   = %SvcDesc%
+ServiceType   = 1               ; SERVICE_KERNEL_DRIVER
+StartType     = 3               ; SERVICE_DEMAND_START
+ErrorControl  = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary = %13%\mkfilter.sys
+
+[MkHub_Inst.NT.Wdf]
+KmdfService = mkfilter, MkFilter_wdfsect
+
+[MkFilter_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+ManufacturerName = "magic-keyboard-windows"
+DiskName         = "mkfilter Installation Disk"
+Hub.DeviceDesc   = "Magic Keyboard virtual HID hub (mkfilter)"
+SvcDesc          = "Magic Keyboard filter (mkfilter)"

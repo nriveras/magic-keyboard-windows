@@ -1,8 +1,11 @@
 #Requires -RunAsAdministrator
-# Installs the test-signed mkfilter package on the Apple keyboard collection (development only).
+# Installs the test-signed mkfilter packages (development only):
+#   - mkfilter.inf on the Apple keyboard collection (lower filter)
+#   - mkhub.inf on a root-enumerated ROOT\MagicKbdHub devnode (virtual HID device for media keys)
 #
 # Steps: check Secure Boot / test signing, create a restore point, trust the cargo-wdk test
-# certificate, force-install the INF on the keyboard collection, and print the resulting stack.
+# certificate, force-install the filter INF, create the hub devnode if needed, install the hub INF,
+# and print the resulting devices.
 # Undo with scripts\uninstall-dev.cmd (double-click; works with the mouse alone).
 param(
     [ValidateSet('debug', 'release')]
@@ -12,10 +15,12 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
+$HubHardwareId = 'ROOT\MagicKbdHub'
 $root = Split-Path $PSScriptRoot -Parent
-$pkg = Join-Path $root "driver\mkfilter\target\$Profile\mkfilter_package"
-$inf = Join-Path $pkg 'mkfilter.inf'
-$cer = Join-Path $pkg 'WDRLocalTestCert.cer'
+$target = Join-Path $root "driver\mkfilter\target\$Profile"
+$inf = Join-Path $target 'mkfilter_package\mkfilter.inf'
+$hubInf = Join-Path $target 'mkhub_package\mkhub.inf'
+$cer = Join-Path $target 'mkfilter_package\WDRLocalTestCert.cer'
 
 # --- Preconditions -------------------------------------------------------------------------
 try { $secureBoot = Confirm-SecureBootUEFI } catch { $secureBoot = $false }
@@ -25,7 +30,9 @@ $startOptions = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control').Syst
 if ($startOptions -notmatch 'TESTSIGNING') {
     throw "Test signing is not active. Run 'bcdedit /set testsigning on' and reboot."
 }
-if (-not (Test-Path $inf)) { throw "Package not found: $pkg (run scripts\build-driver.ps1 first)" }
+foreach ($f in $inf, $hubInf) {
+    if (-not (Test-Path $f)) { throw "Package not found: $f (run scripts\build-driver.ps1 first)" }
+}
 
 $devices = @(Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -like "$HardwareId\*" })
 if ($devices.Count -eq 0) { throw "No present device matches $HardwareId. Is the keyboard connected?" }
@@ -46,22 +53,75 @@ foreach ($store in 'Root', 'TrustedPublisher') {
     Import-Certificate -FilePath $cer -CertStoreLocation "Cert:\LocalMachine\$store" | Out-Null
 }
 
-# --- Install -------------------------------------------------------------------------------
-# The inbox keyboard.inf outranks a test-signed package, so a plain 'pnputil /install' would not
-# switch the device over. UpdateDriverForPlugAndPlayDevices with INSTALLFLAG_FORCE does.
-Add-Type -Namespace MkDev -Name NewDev -MemberDefinition @'
+# --- Native helpers ------------------------------------------------------------------------
+Add-Type -Namespace MkDev -Name Native -MemberDefinition @'
 [DllImport("newdev.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 public static extern bool UpdateDriverForPlugAndPlayDevicesW(
     IntPtr hwndParent, string hardwareId, string fullInfPath, uint installFlags, out bool rebootRequired);
+
+[StructLayout(LayoutKind.Sequential)]
+public struct SP_DEVINFO_DATA { public uint cbSize; public Guid ClassGuid; public uint DevInst; public IntPtr Reserved; }
+
+[DllImport("setupapi.dll", SetLastError = true)]
+public static extern IntPtr SetupDiCreateDeviceInfoList(ref Guid classGuid, IntPtr hwndParent);
+[DllImport("setupapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+public static extern bool SetupDiCreateDeviceInfoW(IntPtr set, string deviceName, ref Guid classGuid,
+    string description, IntPtr hwndParent, uint flags, ref SP_DEVINFO_DATA data);
+[DllImport("setupapi.dll", SetLastError = true)]
+public static extern bool SetupDiSetDeviceRegistryPropertyW(IntPtr set, ref SP_DEVINFO_DATA data,
+    uint property, byte[] buffer, uint size);
+[DllImport("setupapi.dll", SetLastError = true)]
+public static extern bool SetupDiCallClassInstaller(uint function, IntPtr set, ref SP_DEVINFO_DATA data);
+[DllImport("setupapi.dll", SetLastError = true)]
+public static extern bool SetupDiDestroyDeviceInfoList(IntPtr set);
+
+// Creates a root-enumerated devnode (ROOT\SYSTEM\nnnn) with the given hardware ID, like devcon install.
+public static void CreateRootDevice(string hardwareId) {
+    Guid system = new Guid("4d36e97d-e325-11ce-bfc1-08002be10318");
+    IntPtr set = SetupDiCreateDeviceInfoList(ref system, IntPtr.Zero);
+    if (set == new IntPtr(-1)) throw new System.ComponentModel.Win32Exception();
+    try {
+        SP_DEVINFO_DATA data = new SP_DEVINFO_DATA();
+        data.cbSize = (uint)Marshal.SizeOf(typeof(SP_DEVINFO_DATA));
+        if (!SetupDiCreateDeviceInfoW(set, "System", ref system, null, IntPtr.Zero, 1 /* DICD_GENERATE_ID */, ref data))
+            throw new System.ComponentModel.Win32Exception();
+        byte[] ids = System.Text.Encoding.Unicode.GetBytes(hardwareId + "\0\0");
+        if (!SetupDiSetDeviceRegistryPropertyW(set, ref data, 1 /* SPDRP_HARDWAREID */, ids, (uint)ids.Length))
+            throw new System.ComponentModel.Win32Exception();
+        if (!SetupDiCallClassInstaller(0x19 /* DIF_REGISTERDEVICE */, set, ref data))
+            throw new System.ComponentModel.Win32Exception();
+    } finally {
+        SetupDiDestroyDeviceInfoList(set);
+    }
+}
 '@
-$reboot = $false
-if (-not [MkDev.NewDev]::UpdateDriverForPlugAndPlayDevicesW([IntPtr]::Zero, $HardwareId, $inf, 1, [ref]$reboot)) {
-    $err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-    throw ("UpdateDriverForPlugAndPlayDevices failed: 0x{0:X8}" -f $err)
+
+# The inbox keyboard.inf outranks a test-signed package, so a plain 'pnputil /install' would not
+# switch the device over. UpdateDriverForPlugAndPlayDevices with INSTALLFLAG_FORCE does.
+function Install-Inf([string]$Id, [string]$Path) {
+    $reboot = $false
+    if (-not [MkDev.Native]::UpdateDriverForPlugAndPlayDevicesW([IntPtr]::Zero, $Id, $Path, 1, [ref]$reboot)) {
+        $err = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+        throw ("UpdateDriverForPlugAndPlayDevices($Id) failed: 0x{0:X8}" -f $err)
+    }
+    if ($reboot) { Write-Warning "Windows asks for a reboot to finish installing $Id." }
 }
 
+function Get-HubDevices {
+    @(Get-PnpDevice | Where-Object { $_.HardwareID -contains $HubHardwareId })
+}
+
+# --- Install -------------------------------------------------------------------------------
+Install-Inf $HardwareId $inf
+
+if ((Get-HubDevices).Count -eq 0) {
+    [MkDev.Native]::CreateRootDevice($HubHardwareId)
+    Write-Host "Created $HubHardwareId devnode."
+}
+Install-Inf $HubHardwareId $hubInf
+
 # --- Report --------------------------------------------------------------------------------
-foreach ($d in $devices) {
+foreach ($d in @($devices) + (Get-HubDevices)) {
     $props = Get-PnpDeviceProperty -InstanceId $d.InstanceId -KeyName `
         DEVPKEY_Device_Service, DEVPKEY_Device_LowerFilters, DEVPKEY_Device_DriverInfPath
     $now = Get-PnpDevice -InstanceId $d.InstanceId
@@ -69,4 +129,3 @@ foreach ($d in $devices) {
     Write-Host "  status: $($now.Status)  problem: $($now.Problem)"
     $props | ForEach-Object { Write-Host "  $($_.KeyName): $($_.Data)" }
 }
-if ($reboot) { Write-Warning 'Windows asks for a reboot to finish the installation.' }

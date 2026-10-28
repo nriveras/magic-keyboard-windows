@@ -1,8 +1,16 @@
 #Requires -RunAsAdministrator
-# Removes every installed mkfilter package; the keyboard falls back to the inbox keyboard.inf.
+# Removes the hub devnode and every installed mkfilter/mkhub package; the keyboard falls back to
+# the inbox keyboard.inf.
 $ErrorActionPreference = 'Stop'
 
-$packages = @(Get-WindowsDriver -Online | Where-Object { $_.OriginalFileName -like '*\mkfilter.inf' })
+foreach ($d in @(Get-PnpDevice | Where-Object { $_.HardwareID -contains 'ROOT\MagicKbdHub' })) {
+    Write-Host "Removing device $($d.InstanceId)"
+    pnputil /remove-device $d.InstanceId
+}
+
+$packages = @(Get-WindowsDriver -Online | Where-Object {
+    $_.OriginalFileName -like '*\mkfilter.inf' -or $_.OriginalFileName -like '*\mkhub.inf'
+})
 if ($packages.Count -eq 0) { Write-Host 'No mkfilter driver package installed.' }
 foreach ($p in $packages) {
     Write-Host "Removing $($p.Driver) ($($p.OriginalFileName))"
