@@ -15,12 +15,23 @@ pub struct AppConfig {
     pub low_battery: u8,
     /// Program, document or URL opened by F16, F17, F18 and F19 (empty = nothing).
     pub launchers: [String; LAUNCHER_COUNT],
+    /// A disabled launcher leaves its key as a plain F16–F19.
+    pub launchers_enabled: [bool; LAUNCHER_COUNT],
+}
+
+impl AppConfig {
+    /// The target of launcher `i`, if it is enabled and not empty.
+    pub fn launcher(&self, i: usize) -> Option<&str> {
+        let target = self.launchers.get(i)?.trim();
+        (self.launchers_enabled.get(i) == Some(&true) && !target.is_empty()).then_some(target)
+    }
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
             low_battery: 20,
+            launchers_enabled: [true; LAUNCHER_COUNT],
             launchers: [
                 "explorer.exe".into(),
                 "calc.exe".into(),
@@ -69,5 +80,17 @@ mod tests {
         let partial: AppConfig = toml::from_str("low-battery = 10").unwrap();
         assert_eq!(partial.low_battery, 10);
         assert_eq!(partial.launchers, AppConfig::default().launchers);
+        assert_eq!(partial.launchers_enabled, [true; LAUNCHER_COUNT]);
+    }
+
+    #[test]
+    fn disabled_or_empty_launchers_are_skipped() {
+        let mut config = AppConfig::default();
+        config.launchers_enabled[1] = false;
+        config.launchers[2] = "  ".into();
+        assert_eq!(config.launcher(0), Some("explorer.exe"));
+        assert_eq!(config.launcher(1), None);
+        assert_eq!(config.launcher(2), None);
+        assert_eq!(config.launcher(9), None);
     }
 }

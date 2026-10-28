@@ -17,6 +17,8 @@ fn main() {
 
 mod appconfig;
 #[cfg(windows)]
+mod devices;
+#[cfg(windows)]
 mod icon;
 #[cfg(windows)]
 mod settings;
@@ -38,14 +40,13 @@ mod app {
     use std::time::Duration;
 
     use mk_core::config::FnMode;
-    use mk_core::model;
     use mk_core::proto::Status;
-    use mk_hid::battery::{self, Battery};
+    use mk_hid::battery::Battery;
     use mk_hid::control::Control;
     use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
     use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-        RegisterHotKey, MOD_NOREPEAT, VK_F16, VK_F17, VK_F18, VK_F19,
+        RegisterHotKey, UnregisterHotKey, MOD_NOREPEAT, VK_F16, VK_F17, VK_F18, VK_F19,
     };
     use windows_sys::Win32::UI::Shell::{
         Shell_NotifyIconW, NIF_ICON, NIF_INFO, NIF_MESSAGE, NIF_TIP, NIIF_WARNING, NIM_ADD,
@@ -62,6 +63,7 @@ mod app {
     };
 
     use crate::appconfig::{self, AppConfig};
+    use crate::devices;
     use crate::icon::{self, Level};
     use crate::system::{self, wide, TRAY_CLASS, WM_RELOAD};
 
@@ -152,10 +154,7 @@ mod app {
         refresh_battery();
         add_tray_icon();
         unsafe { SetTimer(hwnd, BATTERY_TIMER, BATTERY_POLL, None) };
-        for (i, vk) in LAUNCHER_KEYS.iter().enumerate() {
-            // Fails silently if another program owns the key; the rest still work.
-            unsafe { RegisterHotKey(hwnd, i as i32 + 1, MOD_NOREPEAT, u32::from(*vk)) };
-        }
+        register_launchers(hwnd);
         spawn_watcher(hwnd as usize);
 
         let mut msg: MSG = unsafe { std::mem::zeroed() };
@@ -191,19 +190,23 @@ mod app {
         with_app(|a| a.status = status);
     }
 
-    fn short_name(m: Option<&model::Model>) -> &'static str {
-        match m {
-            Some(m) if m.has_numpad => "keypad model",
-            Some(_) => "compact model",
-            None => "keyboard",
+    /// Claims F16–F19 for the enabled launchers only, so a disabled one types a plain F-key.
+    fn register_launchers(hwnd: HWND) {
+        let config = with_app(|a| a.config.clone()).unwrap_or_default();
+        for (i, vk) in LAUNCHER_KEYS.iter().enumerate() {
+            let id = i as i32 + 1;
+            unsafe { UnregisterHotKey(hwnd, id) };
+            if config.launcher(i).is_some() {
+                // Fails silently if another program owns the key; the rest still work.
+                unsafe { RegisterHotKey(hwnd, id, MOD_NOREPEAT, u32::from(*vk)) };
+            }
         }
     }
 
     fn refresh_battery() {
-        let readings: Vec<(&'static str, Battery)> = battery::collections()
-            .unwrap_or_default()
+        let readings: Vec<(&'static str, Battery)> = devices::connected()
             .into_iter()
-            .filter_map(|c| battery::read(&c).ok().map(|b| (short_name(c.model()), b)))
+            .filter_map(|k| k.battery.map(|b| (k.short_name(), b)))
             .collect();
         let warn = with_app(|a| {
             a.batteries = readings;
@@ -472,6 +475,7 @@ mod app {
             }
             WM_RELOAD => {
                 with_app(|a| a.config = appconfig::load());
+                register_launchers(hwnd);
                 refresh_battery();
                 0
             }
@@ -480,11 +484,14 @@ mod app {
                 0
             }
             WM_HOTKEY => {
-                let target = with_app(|a| a.config.launchers.get(wparam.wrapping_sub(1)).cloned())
-                    .flatten()
-                    .filter(|t| !t.trim().is_empty());
+                let target = with_app(|a| {
+                    a.config
+                        .launcher(wparam.wrapping_sub(1))
+                        .map(str::to_string)
+                })
+                .flatten();
                 if let Some(target) = target {
-                    system::launch(target.trim());
+                    system::launch(&target);
                 }
                 0
             }

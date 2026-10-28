@@ -59,6 +59,8 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Settings window (`mk-app settings`, eframe 0.32): keys, modifiers + presets, F13–F19, app options, cheat sheet; Apply/Revert/Defaults
 - [x] app.toml (launchers, low-battery threshold) with live reload in the tray; per-keyboard battery in tray
 - [x] Hardware test: settings window
+- [x] Keyboard-centric settings layout: tab per connected keyboard, drawn per-model keyboard with clickable keys (popup controls), grouped panels, modifier row laid out like the keyboard; launchers can be disabled; system fonts
+- [ ] Hardware test: keyboard-centric settings layout
 
 ## M7 — Bluetooth
 - [ ] BT hardware IDs in INF, battery over BT, full test matrix

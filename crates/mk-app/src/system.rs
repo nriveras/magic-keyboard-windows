@@ -121,3 +121,25 @@ pub fn launch(target: &str) {
         );
     }
 }
+
+/// Shows the Windows "Open" dialog for a program or document. `None` if cancelled.
+pub fn browse_file() -> Option<String> {
+    use windows_sys::Win32::UI::Controls::Dialogs::{
+        GetOpenFileNameW, OFN_FILEMUSTEXIST, OFN_NOCHANGEDIR, OPENFILENAMEW,
+    };
+    let filter: Vec<u16> = "Programs\0*.exe;*.lnk;*.bat;*.cmd\0All files\0*.*\0\0"
+        .encode_utf16()
+        .collect();
+    let mut file = vec![0u16; 1024];
+    let mut ofn: OPENFILENAMEW = unsafe { std::mem::zeroed() };
+    ofn.lStructSize = std::mem::size_of::<OPENFILENAMEW>() as u32;
+    ofn.lpstrFilter = filter.as_ptr();
+    ofn.lpstrFile = file.as_mut_ptr();
+    ofn.nMaxFile = file.len() as u32;
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+    if unsafe { GetOpenFileNameW(&mut ofn) } == 0 {
+        return None;
+    }
+    let len = file.iter().position(|c| *c == 0).unwrap_or(file.len());
+    Some(String::from_utf16_lossy(&file[..len]))
+}
