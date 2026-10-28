@@ -32,9 +32,28 @@ Reproduce with `mk-probe caps`, `mk-probe battery`, `mk-probe feature MI_01&Col0
 - Single bits: consumer `0xB8` Eject (idx 264), `FF:0003` **Fn** (idx 265), consumer `0x40` Menu (266),
   consumer `0x19E` Lock (267).
 - Output report `01`: LED page 08 usages 1–5.
-- Exact byte offsets are unknown, because user mode can't read the report: kbdhid holds it exclusively
-  (`watch` → Access denied). They don't matter, because the driver decodes and encodes with HidP. M3 will
-  log raw reports anyway. The expected layout is: id, mods, reserved, 6 keys, a bits byte (10 B).
+- User mode can't read the report: kbdhid holds it exclusively (`watch` → Access denied). The M3 driver
+  log confirmed the layout below.
+
+**Report `01` raw layout (confirmed by the M3 driver log, USB, 2026-10-28)**
+
+| Byte | Content |
+|---|---|
+| 0 | report ID `01` |
+| 1 | modifier bits `E0..E7` (e.g. `08` = Left GUI / Left ⌘) |
+| 2 | reserved `00` |
+| 3–8 | 6-slot key array (page 07 usages) |
+| 9 | bit 0 Eject `0xB8`, **bit 1 Fn `FF:0003` (`02`)**, bit 2 Menu `0x40`, bit 3 Lock `0x19E` (assumed from descriptor index order) |
+
+Captured sequences:
+- Fn alone: `…00 02` → `…00 00`.
+- Fn+F1: `02`, then `3A` in byte 3 with `02` still set, then the key array clears while Fn stays `02`, then all zero.
+- Fn+⌫: same as Fn+F1 with `2A`.
+- Left ⌘+A: byte 1 = `08`, then byte 3 = `04`.
+- **The firmware sends correct key releases while Fn is held** (the array clears and Fn stays set). The lost
+  key-ups under stock drivers therefore come from kbdhid's handling of the vendor bit, not from the keyboard.
+- **Lock produced no report on this collection.** Either it wasn't pressed in this capture, or the A2520 sends
+  Lock elsewhere (candidates: `MI_02` Touch ID channel, `MI_00` vendor collections). To be rechecked.
 
 **Battery report `90` (`MI_00&Col02`)**
 - Bit order: `0x46` FullyCharged (idx 0), `0x44` Charging (idx 1), `0x61` (idx 2, unknown; maybe
@@ -67,6 +86,7 @@ Reproduce with `mk-probe caps`, `mk-probe battery`, `mk-probe feature MI_01&Col0
   only keyboard-page usages. Never forward `FF:0003` Fn, consumer `0x40` Menu, `0x19E` Lock or `0xB8` Eject.
 
 ### Open questions
-- [ ] Byte offsets of report 01 (log it from the driver in M3).
+- [x] Byte offsets of report 01 (logged by the M3 driver; see above).
+- [ ] Where the Lock / Touch ID key is reported on the A2520 (not seen in report 01).
 - [ ] Battery values while discharging over Bluetooth; meaning of usage 0x61.
 - [ ] Bluetooth hardware IDs and descriptor for the same keyboard (M7).
