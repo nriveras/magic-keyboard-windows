@@ -10,6 +10,7 @@ PrtSc …), F13–F19 actions, modifier remapping and battery monitoring — ove
 - [Architecture](docs/ARCHITECTURE.md)
 - [HID notes](docs/HID-NOTES.md)
 - [Developer setup](docs/DEV-SETUP.md)
+- [Comparison with Brigadier + Boot Camp](docs/COMPARISON-BRIGADIER.md)
 
 ## Important: driver signing
 
