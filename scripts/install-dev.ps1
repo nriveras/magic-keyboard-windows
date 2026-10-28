@@ -12,8 +12,10 @@ param(
     [string]$Profile = 'debug',
     # Keyboard collections listed in mkfilter.inx; the filter is installed on each one present.
     [string[]]$HardwareIds = @(
-        'HID\VID_05AC&PID_029F&MI_01&Col01',  # Magic Keyboard with Touch ID and Numeric Keypad
-        'HID\VID_05AC&PID_029A&MI_01&Col01'   # Magic Keyboard with Touch ID
+        'HID\VID_05AC&PID_029F&MI_01&Col01',  # Magic Keyboard with Touch ID and Numeric Keypad, USB
+        'HID\VID_05AC&PID_029A&MI_01&Col01',  # Magic Keyboard with Touch ID, USB
+        'HID\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&029f&Col01',  # same, Bluetooth
+        'HID\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&029a&Col01'
     ),
     [switch]$SkipRestorePoint
 )

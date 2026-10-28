@@ -27,9 +27,12 @@ mkfilter.sys = 1,,
 %ManufacturerName% = MagicKbd,NT$ARCH$.10.0...16299
 
 [MagicKbd.NT$ARCH$.10.0...16299]
-; USB keyboard collections (layout confirmed on hardware). Bluetooth IDs are added in M7.
+; Keyboard collections confirmed on hardware: USB (VID 05AC, interface 1) and Bluetooth
+; (HID-over-Bluetooth service 00001124, Apple Bluetooth company ID 004C).
 %A2520.DeviceDesc% = MkFilter_Inst, HID\VID_05AC&PID_029F&MI_01&Col01
 %A2449.DeviceDesc% = MkFilter_Inst, HID\VID_05AC&PID_029A&MI_01&Col01
+%A2520.DeviceDesc% = MkFilter_Inst, HID\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&029f&Col01
+%A2449.DeviceDesc% = MkFilter_Inst, HID\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&029a&Col01
 
 [MkFilter_Inst.NT]
 Include   = keyboard.inf

@@ -63,7 +63,9 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Hardware test: keyboard-centric settings layout
 
 ## M7 — Bluetooth
-- [ ] BT hardware IDs in INF, battery over BT, full test matrix
+- [x] Both models paired; BT hardware IDs + collections recorded (HID-NOTES); battery readable over BT
+- [x] BT keyboard collections added to mkfilter.inx and install-dev
+- [ ] Hardware test over BT: remapping, media keys, Lock, battery in tray, reconnect after sleep / power cycle
 
 ## M8 — Packaging & docs
 - [x] Release driver build verified free of report logging (only lifecycle/error messages)

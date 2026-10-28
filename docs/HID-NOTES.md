@@ -103,3 +103,17 @@ Same interface/collection layout as 029F (`mk-probe list`): `MI_01&Col01` keyboa
 `MI_01&Col02` consumer (in 2 B, feature 4 B), `MI_01&Col03` vendor 64 B, `MI_02` Touch ID channel,
 `MI_00&Col01` vendor, `MI_00&Col02` battery (FF00:0014). Added to mkfilter.inx; Lock is assumed to report
 consumer `0x40` like 029F (`Model::lock_reports_menu`), to be confirmed in the hardware test.
+
+## Bluetooth (2026-10-29): 029F and 029A
+
+Paired over Bluetooth, both keyboards enumerate as `HID\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&029x&ColNN`
+(no `MI_` interfaces; vendor ID is Apple's Bluetooth company ID `004C`):
+
+| Collection | Usage | Reports |
+|---|---|---|
+| `Col01` | 0001:0006 keyboard | in 10 B (same as USB), out 2 B, **feature 65 B** (USB has none) |
+| `Col02` | FF00:0014 battery | in 3 B — `mk-probe battery` reads it (100 %, not charging) |
+| `Col03` | FF00:004B Touch ID channel | in 650 B |
+
+There is no separate consumer collection over Bluetooth. The keyboard collection is added to
+mkfilter.inx for both models; the driver decodes with HidP, so the extra feature report needs no change.
