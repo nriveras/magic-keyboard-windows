@@ -45,9 +45,9 @@ Reproduce with `mk-probe caps`, `mk-probe battery`, `mk-probe feature MI_01&Col0
 | 3–8 | 6-slot key array (page 07 usages) |
 | 9 | **bit 1 Fn `FF:0003` (`02`)**, **bit 2 = the Lock / Touch ID key (`04`)**; bits 0/3 presumably Eject `0xB8` / Menu `0x40` (not on this keyboard) |
 
-Bit 2 = Lock does not match a naive "data index order = bit order" reading (Lock is index 267, Menu 266).
-M4 must log `HidP_GetUsages` output for this byte once and confirm that the parser returns `0x19E` (not `0x40`)
-for `04`. If it returns `0x40`, the model table needs a per-PID override.
+**Confirmed in M4:** HidP decodes byte 9 bit 2 as consumer **`0x40` (Menu)**, not `0x19E`. The physical
+Lock key on the A2520 reports the usage the descriptor calls Menu. `Model::lock_reports_menu()` (true for the
+non-Eject models; confirmed only on 029F) makes the driver treat `0C:40` as Lock.
 
 Captured sequences:
 - Fn alone: `…00 02` → `…00 00`.
@@ -92,6 +92,7 @@ Captured sequences:
 ### Open questions
 - [x] Byte offsets of report 01 (logged by the M3 driver; see above).
 - [x] Where the Lock / Touch ID key is reported on the A2520: report 01, byte 9 bit 2.
-- [ ] Confirm HidP maps byte 9 bit 2 to `0x19E` (M4 one-off log).
+- [x] HidP mapping of byte 9 bit 2: `0C:40` (Menu), handled as Lock on non-Eject models.
+- [ ] Lock usage on 029A/029C/032x (assumed same as 029F).
 - [ ] Battery values while discharging over Bluetooth; meaning of usage 0x61.
 - [ ] Bluetooth hardware IDs and descriptor for the same keyboard (M7).

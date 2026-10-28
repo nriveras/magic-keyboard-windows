@@ -74,6 +74,15 @@ pub const MODELS: &[Model] = &[
     },
 ];
 
+impl Model {
+    /// True if the Lock key arrives as consumer `0x40` (Menu) rather than `0x19E`. The A2520 (029F)
+    /// descriptor declares both, but the physical Lock key sets the bit HidP decodes as Menu.
+    /// Confirmed on 029F; assumed for the other Lock-key (non-Eject) models until tested.
+    pub fn lock_reports_menu(&self) -> bool {
+        !self.has_eject
+    }
+}
+
 /// Looks up a model by vendor/product ID (USB or Bluetooth vendor ID).
 pub fn find(vid: u16, pid: u16) -> Option<&'static Model> {
     if vid != APPLE_USB_VID && vid != APPLE_BT_VID {
@@ -91,5 +100,11 @@ mod tests {
         assert!(find(APPLE_USB_VID, 0x029F).unwrap().has_numpad);
         assert_eq!(find(APPLE_BT_VID, 0x029F), find(APPLE_USB_VID, 0x029F));
         assert!(find(0x046D, 0x029F).is_none());
+    }
+
+    #[test]
+    fn lock_key_usage_per_model() {
+        assert!(find(APPLE_USB_VID, 0x029F).unwrap().lock_reports_menu());
+        assert!(!find(APPLE_USB_VID, 0x0267).unwrap().lock_reports_menu());
     }
 }

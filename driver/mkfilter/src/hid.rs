@@ -42,10 +42,15 @@ impl core::fmt::Debug for Usages {
 }
 
 /// Decodes one input report. Returns `None` if the parser rejects it (e.g. an unknown report ID).
+/// `lock_reports_menu` treats consumer Menu as the Lock key (see `Model::lock_reports_menu`).
 ///
 /// # Safety
 /// `preparsed` must be the preparsed data of the collection that produced `report`.
-pub unsafe fn decode(preparsed: PHIDP_PREPARSED_DATA, report: &[u8]) -> Option<(KeyState, Usages)> {
+pub unsafe fn decode(
+    preparsed: PHIDP_PREPARSED_DATA,
+    report: &[u8],
+    lock_reports_menu: bool,
+) -> Option<(KeyState, Usages)> {
     let mut usages = Usages {
         list: [_USAGE_AND_PAGE::default(); MAX_USAGES],
         len: 0,
@@ -75,6 +80,7 @@ pub unsafe fn decode(preparsed: PHIDP_PREPARSED_DATA, report: &[u8]) -> Option<(
             }
             (page::APPLE_TOP_CASE, page::APPLE_FN_USAGE) => state.fn_key = true,
             (page::CONSUMER, consumer::EJECT) => state.eject = true,
+            (page::CONSUMER, consumer::MENU) if lock_reports_menu => state.lock = true,
             (page::CONSUMER, consumer::MENU) => state.menu = true,
             (page::CONSUMER, consumer::AL_TERMINAL_LOCK) => state.lock = true,
             _ => {}

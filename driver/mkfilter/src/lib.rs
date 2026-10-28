@@ -75,12 +75,14 @@ const fn utf16<const N: usize>(s: &[u8; N]) -> [u16; N] {
 #[repr(C)]
 struct DeviceContext {
     target: WDFIOTARGET,
-    /// Guards `engine`, `preparsed` and `input_len`; read completions may run concurrently.
+    /// Guards every field below; read completions may run concurrently.
     lock: WDFSPINLOCK,
     /// Collection preparsed data, non-paged and owned by a WDFMEMORY parented to the device.
     /// Null until EvtDeviceSelfManagedIoInit succeeds; reports pass through unchanged until then.
     preparsed: PHIDP_PREPARSED_DATA,
     input_len: usize,
+    /// The Lock key arrives as consumer Menu on this model (`Model::lock_reports_menu`).
+    lock_reports_menu: bool,
     engine: Engine,
 }
 
@@ -308,11 +310,13 @@ unsafe fn load_collection(device: WDFDEVICE) -> Result<u16, NTSTATUS> {
         return Err(STATUS_NOT_SUPPORTED);
     }
 
-    let config = unsafe { device_config(device, info.ProductID) };
+    let model = model::find(model::APPLE_USB_VID, info.ProductID);
+    let config = unsafe { device_config(device, model) };
     unsafe {
         call_unsafe_wdf_function_binding!(WdfSpinLockAcquire, (*ctx).lock);
         (*ctx).engine = Engine::new(config);
         (*ctx).input_len = input_len;
+        (*ctx).lock_reports_menu = model.is_some_and(model::Model::lock_reports_menu);
         (*ctx).preparsed = preparsed;
         call_unsafe_wdf_function_binding!(WdfSpinLockRelease, (*ctx).lock);
     }
@@ -380,12 +384,9 @@ unsafe fn ioctl_sync(
 ///
 /// # Safety
 /// PASSIVE_LEVEL.
-unsafe fn device_config(device: WDFDEVICE, pid: u16) -> Config {
-    let mut config = unsafe { registry_config(device) }.unwrap_or_else(|| {
-        model::find(model::APPLE_USB_VID, pid)
-            .map(Config::default_for)
-            .unwrap_or_default()
-    });
+unsafe fn device_config(device: WDFDEVICE, model: Option<&model::Model>) -> Config {
+    let mut config = unsafe { registry_config(device) }
+        .unwrap_or_else(|| model.map(Config::default_for).unwrap_or_default());
     // Until the virtual HID device exists (M5), media and shortcut outputs are dropped, so keep the
     // top row on plain F-keys rather than leaving it dead.
     config.fn_mode = FnMode::FKeysFirst;
@@ -520,7 +521,7 @@ unsafe fn remap(ctx: *mut DeviceContext, report: &mut [u8]) {
             return;
         }
         original[..report.len()].copy_from_slice(report);
-        let Some((state, usages)) = hid::decode(preparsed, report) else {
+        let Some((state, usages)) = hid::decode(preparsed, report, (*ctx).lock_reports_menu) else {
             call_unsafe_wdf_function_binding!(WdfSpinLockRelease, lock);
             return;
         };
