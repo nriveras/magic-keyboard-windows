@@ -67,7 +67,7 @@ Milestones from the project plan. Each completed item is committed to git.
 
 ## M8 — Packaging & docs
 - [x] Release driver build verified free of report logging (only lifecycle/error messages)
-- [x] `scriptsinstall.ps1` (release driver + app to %LOCALAPPDATA%Programs, autostart) and `uninstall.ps1`/`uninstall.cmd`
+- [x] `scripts\install.ps1` (release driver + app to `%LOCALAPPDATA%\Programs`, autostart) and `uninstall.ps1`/`uninstall.cmd`
 - [x] README: requirements, install, use, uninstall, recovery, privacy
 - [ ] Hardware test: install.ps1 / uninstall.cmd round trip
 - [ ] Driver Verifier run
