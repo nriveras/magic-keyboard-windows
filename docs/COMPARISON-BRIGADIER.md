@@ -64,15 +64,15 @@ was unpacked without being run. It contains Apple's **KeyMagic** driver: `Keymag
 **DriverVer 10/07/2016, 6.1.6700.0**, KMDF 1.11, Apple-signed catalog.
 
 - **Architecture: the same idea as this project.** KeyMagic is a KMDF `LowerFilters` driver on the keyboard
-  stack. It binds at the USB interface (`USBVID_05AC&PID_xxxx&MI_0x`) or the BT HID devnode
-  (`BTHENUM{00001124-…}_VID&0001004c_PID&xxxx`) and reads a per-model `KeyboardTable` from the registry.
-- **Supported PIDs** (71 total): 0205–0259, 025A, 025B, 0262–0264, **0267** (Magic Keyboard 2015),
+  stack. It binds at the USB interface (`USB\VID_05AC&PID_xxxx&MI_0x`) or the BT HID devnode
+  (`BTHENUM\{00001124-…}_VID&0001004c_PID&xxxx`) and reads a per-model `KeyboardTable` from the registry.
+- **Supported PIDs** (71 total, not contiguous): 0205–025B, 0262–0264, **0267** (Magic Keyboard 2015),
   **026C** (Magic Keyboard with numpad 2017), 0273, 0274, 0290, 0291 (internal MacBook keyboards).
 - **Not listed:** 029A, 029C, **029F (our A2520)**, 0320–0322. This driver won't bind to the 2021 or 2024
   Magic Keyboards at all. That fits the user reports that media and volume keys don't work.
 - Not checked: the very latest Boot Camp ESD (6.1.x for 2020 Intel Macs) through Brigadier. Doing so needs
   7-Zip and a download of several hundred MB. Since the repackaged "Magic Keyboard 2 and 3" driver above is
-  the one people use on PCs, the verdict below doesn't depend on it.
+  the one people use on PCs, the verdict above doesn't depend on it.
 
 **Conclusion:** for the A2520, Boot Camp is **not a working fallback**. The Secure-Boot-friendly fallback is
 the driverless mode in M8 (low-level hook, no Fn).
