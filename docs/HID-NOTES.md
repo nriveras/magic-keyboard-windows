@@ -52,9 +52,19 @@ Reproduce with `mk-probe caps`, `mk-probe battery`, `mk-probe feature MI_01&Col0
 **Vendor collections**: `MI_02` has inputs 20/21/22 (107/649/62 bytes; Touch ID channel). `MI_00&Col01` has E0 (4 B) and 9A (1 B).
 `MI_01&Col03` has 3F (64 B). All are ignored.
 
+### `input-monitor` baseline (stock Windows drivers, USB, 2026-10-28)
+
+- F1–F12 arrive as plain `VK_F1..VK_F12` (scan codes 3B–44, 57, 58) from `MI_01&Col01`. No consumer
+  events at all, so media and volume keys are dead today. The consumer collection `MI_01&Col02` stayed
+  silent even though it declares Play/Pause/FF/RW/Next/Prev. The firmware evidently sends the top row as
+  F-keys, which possibly relates to feature `09` = 1 (unconfirmed, still never written).
+- Fn produces no event. kbdhid drops vendor usage `FF:0003`.
+- A second run (Fn presumably held) showed key-downs for `1`, F1–F12 and Ctrl **with no key-ups**. To be
+  confirmed: is this kbdhid mishandling releases while the Fn bit is set, or did the capture stop early?
+- Lock key (`0x19E`): no event captured yet.
+
 ### Open questions
 - [ ] Byte offsets of report 01 (log it from the driver in M3).
 - [ ] Battery values while discharging over Bluetooth; meaning of usage 0x61.
 - [ ] Bluetooth hardware IDs and descriptor for the same keyboard (M7).
-- [ ] `input-monitor` baseline: what Windows receives today for F1–F12, Fn+keys and the Lock key
-      (run interactively).
+- [ ] `input-monitor` follow-up: Lock key, Fn+⌫, key-ups while Fn is held
