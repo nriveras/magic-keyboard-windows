@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/mk-core"]
+# The kernel driver (driver/mkfilter) is built separately with cargo-wdk; it has its own
+# profile requirements (panic=abort, no std) and is intentionally not a workspace member.
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "local"
+rust-version = "1.80"
+
+[workspace.dependencies]
+mk-core = { path = "crates/mk-core" }

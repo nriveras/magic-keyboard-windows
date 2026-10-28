@@ -5,9 +5,9 @@ Milestones from the project plan. Each completed item is committed to git.
 ## M0 — Repo & toolchain
 - [x] `git init`, `.gitignore`
 - [x] docs: SPEC, ARCHITECTURE, HID-NOTES, DEV-SETUP
-- [ ] Rust toolchain (rustup, stable MSVC)
-- [ ] VS 2022 Build Tools + Windows SDK, WDK 10.0.26100, LLVM
-- [ ] cargo workspace skeleton
+- [x] Rust toolchain (rustup, stable MSVC)
+- [x] VS 2022 Build Tools + Windows SDK, WDK 10.0.26100, LLVM
+- [x] cargo workspace skeleton
 
 ## M1 — mk-probe & spikes
 - [ ] `list`, `caps`, `watch`, `battery`, `feature`, `input-monitor`
@@ -16,10 +16,10 @@ Milestones from the project plan. Each completed item is committed to git.
 - [ ] Boot Camp driver evaluation written up
 
 ## M2 — mk-core engine
-- [ ] Usage constants, KeyState, config model
-- [ ] Fn layer + Fn lock + latch
-- [ ] Missing keys, F13–F19, modifiers, Clear/Lock/Eject
-- [ ] Unit + property tests
+- [x] Usage constants, KeyState, config model (64-byte wire format)
+- [x] Fn layer + Fn lock + latch + Fn double/triple tap
+- [x] Missing keys, F13–F19, modifiers, Clear/Lock/Eject
+- [x] Unit (51) + property tests (no stuck keys, stable idle)
 
 ## M3 — Driver pass-through
 - [ ] Rust KMDF filter builds and signs (test cert)

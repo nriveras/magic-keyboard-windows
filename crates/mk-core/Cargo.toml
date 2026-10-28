@@ -1,0 +1,19 @@
+[package]
+name = "mk-core"
+description = "Platform-independent Magic Keyboard remapping engine, config and driver protocol (no_std)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+# Enables serde derives and the TOML user-config helpers used by the app.
+std = ["dep:serde", "dep:toml"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
+toml = { version = "0.8", optional = true }
+
+[dev-dependencies]
+proptest = "1"

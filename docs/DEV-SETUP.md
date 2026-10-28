@@ -33,4 +33,9 @@ If the machine fails to boot after installing the driver: boot Safe Mode and run
 or restore the restore point.
 
 ## Installed versions
-_(filled in after M0 toolchain install)_
+| Tool | Version |
+|---|---|
+| rustc / cargo | 1.99.1 |
+| VS 2022 Build Tools | 17.14.42 |
+| Windows SDK / WDK | 10.0.26100 (WDK 10.1.26100.6584) |
+| LLVM / clang | 23.1.4 |
