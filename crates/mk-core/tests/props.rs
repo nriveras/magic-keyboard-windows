@@ -3,7 +3,8 @@
 //! Property tests: no stuck keys, bounded outputs, for random configs and key sequences.
 
 use mk_core::config::{
-    ClearAction, Config, EjectAction, F6Action, FnDoubleTap, FnMode, LockAction, ModSource, ModTarget,
+    ClearAction, Config, EjectAction, F6Action, FnDoubleTap, FnMode, LockAction, ModSource,
+    ModTarget,
 };
 use mk_core::state::{KbdReport, MAX_KEYS};
 use mk_core::usage::kbd;
@@ -37,23 +38,28 @@ fn pick<T: Copy>(all: &[T], i: u8) -> T {
 }
 
 fn arb_config() -> impl Strategy<Value = Config> {
-    (any::<[u8; 7]>(), any::<[u8; ModSource::COUNT]>(), any::<bool>()).prop_map(|(e, mods, sleep)| {
-        let mut cfg = Config::default();
-        cfg.fn_mode = pick(FnMode::ALL, e[0]);
-        cfg.f6 = pick(F6Action::ALL, e[1]);
-        cfg.clear = pick(ClearAction::ALL, e[2]);
-        cfg.lock = pick(LockAction::ALL, e[3]);
-        cfg.eject = pick(EjectAction::ALL, e[4]);
-        cfg.fn_double_tap = pick(FnDoubleTap::ALL, e[5]);
-        cfg.sleep_combo = sleep;
-        for (i, m) in mods.iter().enumerate() {
-            cfg.modifiers[i] = pick(ModTarget::ALL, *m);
-        }
-        if e[6] & 1 == 1 {
-            cfg.f_ext[0] = 0;
-        }
-        cfg
-    })
+    (
+        any::<[u8; 7]>(),
+        any::<[u8; ModSource::COUNT]>(),
+        any::<bool>(),
+    )
+        .prop_map(|(e, mods, sleep)| {
+            let mut cfg = Config::default();
+            cfg.fn_mode = pick(FnMode::ALL, e[0]);
+            cfg.f6 = pick(F6Action::ALL, e[1]);
+            cfg.clear = pick(ClearAction::ALL, e[2]);
+            cfg.lock = pick(LockAction::ALL, e[3]);
+            cfg.eject = pick(EjectAction::ALL, e[4]);
+            cfg.fn_double_tap = pick(FnDoubleTap::ALL, e[5]);
+            cfg.sleep_combo = sleep;
+            for (i, m) in mods.iter().enumerate() {
+                cfg.modifiers[i] = pick(ModTarget::ALL, *m);
+            }
+            if e[6] & 1 == 1 {
+                cfg.f_ext[0] = 0;
+            }
+            cfg
+        })
 }
 
 #[derive(Clone, Debug)]
@@ -63,8 +69,13 @@ struct Frame {
 }
 
 fn arb_frame() -> impl Strategy<Value = Frame> {
-    (any::<u8>(), prop::collection::vec(0..UNIVERSE.len(), 0..5), any::<[bool; 4]>(), 1u32..600).prop_map(
-        |(mods, keys, specials, dt)| {
+    (
+        any::<u8>(),
+        prop::collection::vec(0..UNIVERSE.len(), 0..5),
+        any::<[bool; 4]>(),
+        1u32..600,
+    )
+        .prop_map(|(mods, keys, specials, dt)| {
             let mut s = KeyState::new();
             s.mods = mods;
             for k in keys {
@@ -75,8 +86,7 @@ fn arb_frame() -> impl Strategy<Value = Frame> {
             s.menu = specials[2];
             s.lock = specials[3];
             Frame { state: s, dt }
-        },
-    )
+        })
 }
 
 fn assert_bounded(out: &Outputs) {
@@ -85,9 +95,21 @@ fn assert_bounded(out: &Outputs) {
 }
 
 fn assert_idle(out: &Outputs) {
-    assert_eq!(out.keyboard, KbdReport::default(), "keyboard report must be empty");
-    assert_eq!(out.virt_keyboard, KbdReport::default(), "virtual keyboard must be released");
-    assert_eq!(out.consumer_usages().count(), 0, "consumer must be released");
+    assert_eq!(
+        out.keyboard,
+        KbdReport::default(),
+        "keyboard report must be empty"
+    );
+    assert_eq!(
+        out.virt_keyboard,
+        KbdReport::default(),
+        "virtual keyboard must be released"
+    );
+    assert_eq!(
+        out.consumer_usages().count(),
+        0,
+        "consumer must be released"
+    );
     assert_eq!(out.system, 0, "system control must be released");
 }
 

@@ -16,7 +16,10 @@ impl H {
     }
 
     fn with(cfg: Config) -> Self {
-        H { e: Engine::new(cfg), t: 1000 }
+        H {
+            e: Engine::new(cfg),
+            t: 1000,
+        }
     }
 
     fn send(&mut self, s: KeyState) -> Outputs {
@@ -112,9 +115,27 @@ fn all_special_functions() {
     let cases: [(u8, Action); 12] = [
         (0x3A, Action::Consumer(consumer::BRIGHTNESS_DOWN)),
         (0x3B, Action::Consumer(consumer::BRIGHTNESS_UP)),
-        (0x3C, Action::Combo { mods: modbits::LGUI, key: kbd::TAB }),
-        (0x3D, Action::Combo { mods: modbits::LGUI, key: kbd::S }),
-        (0x3E, Action::Combo { mods: modbits::LGUI, key: kbd::H }),
+        (
+            0x3C,
+            Action::Combo {
+                mods: modbits::LGUI,
+                key: kbd::TAB,
+            },
+        ),
+        (
+            0x3D,
+            Action::Combo {
+                mods: modbits::LGUI,
+                key: kbd::S,
+            },
+        ),
+        (
+            0x3E,
+            Action::Combo {
+                mods: modbits::LGUI,
+                key: kbd::H,
+            },
+        ),
         (0x3F, Action::System(system::SLEEP)),
         (0x40, Action::Consumer(consumer::PREV_TRACK)),
         (0x41, Action::Consumer(consumer::PLAY_PAUSE)),
@@ -151,11 +172,20 @@ fn f_keys_first_mode_inverts() {
 #[test]
 fn shift_media_variants() {
     let mut h = H::new();
-    assert_eq!(consumer(&h.send(ks(&[kbd::LEFT_SHIFT, 0x40]))), vec![consumer::REWIND]);
+    assert_eq!(
+        consumer(&h.send(ks(&[kbd::LEFT_SHIFT, 0x40]))),
+        vec![consumer::REWIND]
+    );
     h.send(none());
-    assert_eq!(consumer(&h.send(ks(&[kbd::RIGHT_SHIFT, 0x41]))), vec![consumer::STOP]);
+    assert_eq!(
+        consumer(&h.send(ks(&[kbd::RIGHT_SHIFT, 0x41]))),
+        vec![consumer::STOP]
+    );
     h.send(none());
-    assert_eq!(consumer(&h.send(ks(&[kbd::LEFT_SHIFT, 0x42]))), vec![consumer::FAST_FORWARD]);
+    assert_eq!(
+        consumer(&h.send(ks(&[kbd::LEFT_SHIFT, 0x42]))),
+        vec![consumer::FAST_FORWARD]
+    );
 }
 
 #[test]
@@ -180,7 +210,10 @@ fn f6_options() {
 
     cfg.f6 = F6Action::DoNotDisturb;
     let mut h = H::with(cfg);
-    assert_eq!(h.send(ks(&[0x3F])).virt_keyboard, virt(modbits::LGUI, kbd::N));
+    assert_eq!(
+        h.send(ks(&[0x3F])).virt_keyboard,
+        virt(modbits::LGUI, kbd::N)
+    );
 
     cfg.f6 = F6Action::None;
     let mut h = H::with(cfg);
@@ -221,7 +254,10 @@ fn fn_and_key_in_same_report_combine() {
 #[test]
 fn shift_released_before_media_key() {
     let mut h = H::new();
-    assert_eq!(consumer(&h.send(ks(&[kbd::LEFT_SHIFT, 0x41]))), vec![consumer::STOP]);
+    assert_eq!(
+        consumer(&h.send(ks(&[kbd::LEFT_SHIFT, 0x41]))),
+        vec![consumer::STOP]
+    );
     assert_eq!(consumer(&h.send(ks(&[0x41]))), vec![consumer::STOP]);
     assert!(consumer(&h.send(none())).is_empty());
 }
@@ -260,9 +296,17 @@ fn fn_left_shift_f11_is_print_screen_without_shift() {
     let mut h = H::new();
     let out = h.send(fnks(&[kbd::LEFT_SHIFT, kbd::LEFT_ALT, kbd::F11]));
     assert_eq!(keys(&out), &[kbd::PRINT_SCREEN]);
-    assert_eq!(out.keyboard.mods, modbits::LALT, "left shift is consumed, alt passes through");
+    assert_eq!(
+        out.keyboard.mods,
+        modbits::LALT,
+        "left shift is consumed, alt passes through"
+    );
     let out = h.send(fnks(&[kbd::LEFT_SHIFT, kbd::LEFT_ALT]));
-    assert_eq!(out.keyboard.mods, modbits::LSHIFT | modbits::LALT, "shift returns after release");
+    assert_eq!(
+        out.keyboard.mods,
+        modbits::LSHIFT | modbits::LALT,
+        "shift returns after release"
+    );
 }
 
 #[test]
@@ -285,7 +329,15 @@ fn ctrl_alt_delete() {
 
 #[test]
 fn f13_to_f19_defaults() {
-    let expected = [kbd::PRINT_SCREEN, kbd::SCROLL_LOCK, kbd::PAUSE, kbd::F16, kbd::F17, kbd::F18, kbd::F19];
+    let expected = [
+        kbd::PRINT_SCREEN,
+        kbd::SCROLL_LOCK,
+        kbd::PAUSE,
+        kbd::F16,
+        kbd::F17,
+        kbd::F18,
+        kbd::F19,
+    ];
     for i in 0..F_EXT_COUNT as u8 {
         let mut h = H::new();
         assert_eq!(keys(&h.send(ks(&[kbd::F13 + i]))), &[expected[i as usize]]);
@@ -343,7 +395,10 @@ fn caps_lock_as_fn_and_fn_as_ctrl() {
     cfg.set_modifier(ModSource::CapsLock, ModTarget::Fn);
     cfg.set_modifier(ModSource::Fn, ModTarget::Ctrl);
     let mut h = H::with(cfg);
-    assert_eq!(keys(&h.send(ks(&[kbd::CAPS_LOCK, kbd::BACKSPACE]))), &[kbd::DELETE]);
+    assert_eq!(
+        keys(&h.send(ks(&[kbd::CAPS_LOCK, kbd::BACKSPACE]))),
+        &[kbd::DELETE]
+    );
     h.send(none());
     let out = h.send(fnks(&[0x06]));
     assert_eq!(out.keyboard.mods, modbits::LCTRL);
@@ -449,7 +504,10 @@ fn double_tap_toggles_fn_lock_immediately_without_sleep_combo() {
     let (_, r1) = tap_fn(&mut h, 1000);
     assert_eq!(r1.notification, None);
     let (_, r2) = tap_fn(&mut h, 1200);
-    assert_eq!(r2.notification, Some(Notification::FnLockChanged(FnMode::FKeysFirst)));
+    assert_eq!(
+        r2.notification,
+        Some(Notification::FnLockChanged(FnMode::FKeysFirst))
+    );
     assert_eq!(h.e.config().fn_mode, FnMode::FKeysFirst);
     assert_eq!(keys(&h.send(ks(&[0x41]))), &[0x41], "F-keys now come first");
 }
@@ -480,7 +538,10 @@ fn deferred_double_tap_fires_before_next_key() {
     tap_fn(&mut h, 1000);
     tap_fn(&mut h, 1200);
     let out = h.send_at(1300, ks(&[0x41]));
-    assert_eq!(out.notification, Some(Notification::FnLockChanged(FnMode::FKeysFirst)));
+    assert_eq!(
+        out.notification,
+        Some(Notification::FnLockChanged(FnMode::FKeysFirst))
+    );
     assert_eq!(keys(&out), &[0x41], "key resolved with the new mode");
 }
 
@@ -526,12 +587,20 @@ fn triple_tap_then_space_sleeps() {
     tap_fn(&mut h, 1000);
     tap_fn(&mut h, 1200);
     tap_fn(&mut h, 1400);
-    assert_eq!(h.e.next_deadline(), None, "double tap cancelled by third tap");
+    assert_eq!(
+        h.e.next_deadline(),
+        None,
+        "double tap cancelled by third tap"
+    );
     let out = h.send_at(1600, ks(&[kbd::SPACE]));
     assert_eq!(out.system, system::SLEEP);
     assert!(keys(&out).is_empty(), "space is consumed");
     assert_eq!(out.notification, None);
-    assert_eq!(h.e.config().fn_mode, FnMode::MediaFirst, "fn lock untouched");
+    assert_eq!(
+        h.e.config().fn_mode,
+        FnMode::MediaFirst,
+        "fn lock untouched"
+    );
     let out = h.send(none());
     assert_eq!(out.system, 0);
     assert!(out.system_changed);
@@ -602,7 +671,10 @@ fn release_all_clears_virtual_devices() {
 fn multiple_consumer_keys() {
     let mut h = H::new();
     let out = h.send(ks(&[0x44, 0x45]));
-    assert_eq!(consumer(&out), vec![consumer::VOLUME_DOWN, consumer::VOLUME_UP]);
+    assert_eq!(
+        consumer(&out),
+        vec![consumer::VOLUME_DOWN, consumer::VOLUME_UP]
+    );
     let out = h.send(ks(&[0x45]));
     assert_eq!(consumer(&out), vec![consumer::VOLUME_UP]);
 }

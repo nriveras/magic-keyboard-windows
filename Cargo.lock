@@ -185,6 +185,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "mk-hid"
+version = "0.1.0"
+dependencies = [
+ "mk-core",
+ "windows-sys",
+]
+
+[[package]]
+name = "mk-probe"
+version = "0.1.0"
+dependencies = [
+ "mk-core",
+ "mk-hid",
+ "windows-sys",
+]
+
+[[package]]
 name = "num-traits"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"

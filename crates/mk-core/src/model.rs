@@ -16,14 +16,62 @@ pub struct Model {
 }
 
 pub const MODELS: &[Model] = &[
-    Model { pid: 0x0267, name: "Magic Keyboard (2015)", has_numpad: false, has_touch_id: false, has_eject: true },
-    Model { pid: 0x026C, name: "Magic Keyboard with Numeric Keypad (2017)", has_numpad: true, has_touch_id: false, has_eject: true },
-    Model { pid: 0x029A, name: "Magic Keyboard with Touch ID (2021)", has_numpad: false, has_touch_id: true, has_eject: false },
-    Model { pid: 0x029C, name: "Magic Keyboard (2021)", has_numpad: false, has_touch_id: false, has_eject: false },
-    Model { pid: 0x029F, name: "Magic Keyboard with Touch ID and Numeric Keypad (2021)", has_numpad: true, has_touch_id: true, has_eject: false },
-    Model { pid: 0x0320, name: "Magic Keyboard (USB-C, 2024)", has_numpad: false, has_touch_id: false, has_eject: false },
-    Model { pid: 0x0321, name: "Magic Keyboard with Touch ID (USB-C, 2024)", has_numpad: false, has_touch_id: true, has_eject: false },
-    Model { pid: 0x0322, name: "Magic Keyboard with Touch ID and Numeric Keypad (USB-C, 2024)", has_numpad: true, has_touch_id: true, has_eject: false },
+    Model {
+        pid: 0x0267,
+        name: "Magic Keyboard (2015)",
+        has_numpad: false,
+        has_touch_id: false,
+        has_eject: true,
+    },
+    Model {
+        pid: 0x026C,
+        name: "Magic Keyboard with Numeric Keypad (2017)",
+        has_numpad: true,
+        has_touch_id: false,
+        has_eject: true,
+    },
+    Model {
+        pid: 0x029A,
+        name: "Magic Keyboard with Touch ID (2021)",
+        has_numpad: false,
+        has_touch_id: true,
+        has_eject: false,
+    },
+    Model {
+        pid: 0x029C,
+        name: "Magic Keyboard (2021)",
+        has_numpad: false,
+        has_touch_id: false,
+        has_eject: false,
+    },
+    Model {
+        pid: 0x029F,
+        name: "Magic Keyboard with Touch ID and Numeric Keypad (2021)",
+        has_numpad: true,
+        has_touch_id: true,
+        has_eject: false,
+    },
+    Model {
+        pid: 0x0320,
+        name: "Magic Keyboard (USB-C, 2024)",
+        has_numpad: false,
+        has_touch_id: false,
+        has_eject: false,
+    },
+    Model {
+        pid: 0x0321,
+        name: "Magic Keyboard with Touch ID (USB-C, 2024)",
+        has_numpad: false,
+        has_touch_id: true,
+        has_eject: false,
+    },
+    Model {
+        pid: 0x0322,
+        name: "Magic Keyboard with Touch ID and Numeric Keypad (USB-C, 2024)",
+        has_numpad: true,
+        has_touch_id: true,
+        has_eject: false,
+    },
 ];
 
 /// Looks up a model by vendor/product ID (USB or Bluetooth vendor ID).

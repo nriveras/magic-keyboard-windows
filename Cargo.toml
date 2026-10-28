@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/mk-core"]
+members = ["crates/mk-core", "crates/mk-hid", "crates/mk-probe"]
 # The kernel driver (driver/mkfilter) is built separately with cargo-wdk; it has its own
 # profile requirements (panic=abort, no std) and is intentionally not a workspace member.
 

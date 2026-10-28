@@ -3,8 +3,12 @@
 //! The channel only carries configuration and status — never key events.
 
 /// Device interface GUID exposed by the hub device: `{850ccc0b-e460-4555-bb3f-474dec769d11}`.
-pub const INTERFACE_GUID: (u32, u16, u16, [u8; 8]) =
-    (0x850c_cc0b, 0xe460, 0x4555, [0xbb, 0x3f, 0x47, 0x4d, 0xec, 0x76, 0x9d, 0x11]);
+pub const INTERFACE_GUID: (u32, u16, u16, [u8; 8]) = (
+    0x850c_cc0b,
+    0xe460,
+    0x4555,
+    [0xbb, 0x3f, 0x47, 0x4d, 0xec, 0x76, 0x9d, 0x11],
+);
 
 /// Custom device type (0x8000+ range is reserved for vendors).
 pub const DEVICE_TYPE: u32 = 0x8A11;
@@ -23,8 +27,12 @@ pub const IOCTL_GET_STATUS: u32 = ctl_code(DEVICE_TYPE, 0x800, METHOD_BUFFERED, 
 /// Out: 64-byte config wire buffer ([`crate::Config::to_wire`]).
 pub const IOCTL_GET_CONFIG: u32 = ctl_code(DEVICE_TYPE, 0x801, METHOD_BUFFERED, FILE_READ_ACCESS);
 /// In: 64-byte config wire buffer. Applied live and persisted in the registry.
-pub const IOCTL_SET_CONFIG: u32 =
-    ctl_code(DEVICE_TYPE, 0x802, METHOD_BUFFERED, FILE_READ_ACCESS | FILE_WRITE_ACCESS);
+pub const IOCTL_SET_CONFIG: u32 = ctl_code(
+    DEVICE_TYPE,
+    0x802,
+    METHOD_BUFFERED,
+    FILE_READ_ACCESS | FILE_WRITE_ACCESS,
+);
 /// In: [`Status::generation`] last seen (u32). Completes (out: [`Status`]) when the status changes.
 pub const IOCTL_WAIT_STATUS: u32 = ctl_code(DEVICE_TYPE, 0x803, METHOD_BUFFERED, FILE_READ_ACCESS);
 

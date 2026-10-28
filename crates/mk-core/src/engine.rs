@@ -5,7 +5,10 @@
 //! [`Action`] is resolved once and latched; the release always undoes exactly that action. This keeps
 //! output consistent when Fn or Shift change while a key is held (no stuck keys).
 
-use crate::config::{ClearAction, Config, EjectAction, F6Action, FnDoubleTap, FnMode, LockAction, ModSource, ModTarget};
+use crate::config::{
+    ClearAction, Config, EjectAction, F6Action, FnDoubleTap, FnMode, LockAction, ModSource,
+    ModTarget,
+};
 use crate::state::{KbdReport, KeyList, KeyState, Notification, Outputs, MAX_CONSUMER, MAX_KEYS};
 use crate::usage::{consumer, kbd, modbits, system};
 
@@ -32,11 +35,17 @@ pub enum Action {
     /// Keyboard usage in the real report (modifier usages set modifier bits).
     Key(u8),
     /// Keyboard usage in the real report that hides the given output modifier bits while held.
-    KeyMasked { key: u8, suppress: u8 },
+    KeyMasked {
+        key: u8,
+        suppress: u8,
+    },
     Consumer(u16),
     System(u8),
     /// Shortcut held on the virtual keyboard.
-    Combo { mods: u8, key: u8 },
+    Combo {
+        mods: u8,
+        key: u8,
+    },
     /// Acts as the Fn modifier.
     Fn,
 }
@@ -301,7 +310,10 @@ impl Engine {
             },
             phys::MENU => Action::Key(kbd::APPLICATION),
             phys::LOCK => match self.cfg.lock {
-                LockAction::LockWorkstation => Action::Combo { mods: modbits::LGUI, key: kbd::L },
+                LockAction::LockWorkstation => Action::Combo {
+                    mods: modbits::LGUI,
+                    key: kbd::L,
+                },
                 LockAction::Insert => Action::Key(kbd::INSERT),
                 LockAction::Disabled => Action::None,
             },
@@ -335,8 +347,18 @@ impl Engine {
         let mods = self.output_mods();
         if fn_held && mods & modbits::LSHIFT != 0 {
             match k {
-                kbd::F11 => return Action::KeyMasked { key: kbd::PRINT_SCREEN, suppress: modbits::LSHIFT },
-                kbd::F12 => return Action::KeyMasked { key: kbd::SCROLL_LOCK, suppress: modbits::LSHIFT },
+                kbd::F11 => {
+                    return Action::KeyMasked {
+                        key: kbd::PRINT_SCREEN,
+                        suppress: modbits::LSHIFT,
+                    }
+                }
+                kbd::F12 => {
+                    return Action::KeyMasked {
+                        key: kbd::SCROLL_LOCK,
+                        suppress: modbits::LSHIFT,
+                    }
+                }
                 _ => {}
             }
         }
@@ -348,7 +370,10 @@ impl Engine {
             return Action::Key(k);
         }
         let shift = mods & modbits::ANY_SHIFT != 0;
-        let win = |key| Action::Combo { mods: modbits::LGUI, key };
+        let win = |key| Action::Combo {
+            mods: modbits::LGUI,
+            key,
+        };
         match i {
             0 => Action::Consumer(consumer::BRIGHTNESS_DOWN),
             1 => Action::Consumer(consumer::BRIGHTNESS_UP),
@@ -360,9 +385,21 @@ impl Engine {
                 F6Action::DoNotDisturb => win(kbd::N),
                 F6Action::None => Action::None,
             },
-            6 => Action::Consumer(if shift { consumer::REWIND } else { consumer::PREV_TRACK }),
-            7 => Action::Consumer(if shift { consumer::STOP } else { consumer::PLAY_PAUSE }),
-            8 => Action::Consumer(if shift { consumer::FAST_FORWARD } else { consumer::NEXT_TRACK }),
+            6 => Action::Consumer(if shift {
+                consumer::REWIND
+            } else {
+                consumer::PREV_TRACK
+            }),
+            7 => Action::Consumer(if shift {
+                consumer::STOP
+            } else {
+                consumer::PLAY_PAUSE
+            }),
+            8 => Action::Consumer(if shift {
+                consumer::FAST_FORWARD
+            } else {
+                consumer::NEXT_TRACK
+            }),
             9 => Action::Consumer(consumer::MUTE),
             10 => Action::Consumer(consumer::VOLUME_DOWN),
             _ => Action::Consumer(consumer::VOLUME_UP),
@@ -391,7 +428,11 @@ impl Engine {
             return;
         }
         let gap_ok = elapsed(self.fn_press_ms, self.last_tap_ms) <= TAP_WINDOW_MS;
-        self.tap_count = if self.tap_count > 0 && gap_ok { self.tap_count.saturating_add(1) } else { 1 };
+        self.tap_count = if self.tap_count > 0 && gap_ok {
+            self.tap_count.saturating_add(1)
+        } else {
+            1
+        };
         self.last_tap_ms = now;
 
         let double_enabled = self.cfg.fn_double_tap != FnDoubleTap::Off;
@@ -420,7 +461,9 @@ impl Engine {
         }
         let mut over = None;
         if self.cfg.sleep_combo && p == kbd::SPACE as PhysKey {
-            let armed = self.sleep_armed_until.is_some_and(|until| !reached(now, until));
+            let armed = self
+                .sleep_armed_until
+                .is_some_and(|until| !reached(now, until));
             if armed || (fn_held && self.third_press) {
                 over = Some(Action::System(system::SLEEP));
             }
@@ -461,7 +504,10 @@ impl Engine {
             FnDoubleTap::Dictation => {
                 let mut keys = KeyList::new();
                 keys.push(kbd::H);
-                out.pulse = Some(KbdReport { mods: modbits::LGUI, keys });
+                out.pulse = Some(KbdReport {
+                    mods: modbits::LGUI,
+                    keys,
+                });
             }
         }
     }

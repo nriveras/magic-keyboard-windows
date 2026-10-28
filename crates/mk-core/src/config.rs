@@ -113,7 +113,10 @@ impl ModSource {
     pub fn is_right(self) -> bool {
         matches!(
             self,
-            ModSource::RightControl | ModSource::RightShift | ModSource::RightOption | ModSource::RightCommand
+            ModSource::RightControl
+                | ModSource::RightShift
+                | ModSource::RightOption
+                | ModSource::RightCommand
         )
     }
 

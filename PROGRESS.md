@@ -10,9 +10,10 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] cargo workspace skeleton
 
 ## M1 — mk-probe & spikes
-- [ ] `list`, `caps`, `watch`, `battery`, `feature`, `input-monitor`
-- [ ] Keyboard report logical range / layout recorded in HID-NOTES
-- [ ] Battery report decoded
+- [x] `list`, `caps`, `watch`, `battery`, `feature`, `input-monitor`
+- [x] Keyboard report logical range / layout recorded in HID-NOTES (0x00–0xFF array, 6KRO)
+- [x] Battery report decoded
+- [ ] `input-monitor` baseline captured (needs interactive key presses)
 - [ ] Boot Camp driver evaluation written up
 
 ## M2 — mk-core engine

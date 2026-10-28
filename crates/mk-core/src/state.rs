@@ -17,7 +17,11 @@ pub struct KeyList {
 
 impl KeyList {
     pub const fn new() -> Self {
-        KeyList { keys: [0; MAX_KEYS], len: 0, overflow: false }
+        KeyList {
+            keys: [0; MAX_KEYS],
+            len: 0,
+            overflow: false,
+        }
     }
 
     /// Adds `usage` unless it is already present. Sets the overflow flag when full.
@@ -67,7 +71,9 @@ impl Default for KeyList {
 
 impl core::fmt::Debug for KeyList {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_list().entries(self.as_slice().iter().map(|k| Hex(*k))).finish()
+        f.debug_list()
+            .entries(self.as_slice().iter().map(|k| Hex(*k)))
+            .finish()
     }
 }
 
@@ -97,7 +103,14 @@ pub struct KeyState {
 
 impl KeyState {
     pub const fn new() -> Self {
-        KeyState { mods: 0, keys: KeyList::new(), fn_key: false, eject: false, menu: false, lock: false }
+        KeyState {
+            mods: 0,
+            keys: KeyList::new(),
+            fn_key: false,
+            eject: false,
+            menu: false,
+            lock: false,
+        }
     }
 
     /// Marks a keyboard-page usage as pressed (modifier usages set the matching bit).
@@ -164,6 +177,9 @@ impl Outputs {
 
     /// True if any virtual device report must be sent.
     pub fn any_virtual_change(&self) -> bool {
-        self.virt_keyboard_changed || self.consumer_changed || self.system_changed || self.pulse.is_some()
+        self.virt_keyboard_changed
+            || self.consumer_changed
+            || self.system_changed
+            || self.pulse.is_some()
     }
 }
