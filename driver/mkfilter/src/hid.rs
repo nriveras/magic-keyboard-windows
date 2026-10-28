@@ -12,6 +12,7 @@ use wdk_sys::{
 
 pub const HIDP_STATUS_SUCCESS: NTSTATUS = 0x0011_0000;
 pub const HIDP_STATUS_BUFFER_TOO_SMALL: NTSTATUS = 0xC011_0007_u32 as NTSTATUS;
+pub const HIDP_STATUS_USAGE_NOT_FOUND: NTSTATUS = 0xC011_0004_u32 as NTSTATUS;
 
 /// Upper bound for usages in one report: 8 modifiers + 6 array slots + 4 Apple bits, with headroom.
 const MAX_USAGES: usize = 32;
@@ -78,7 +79,9 @@ pub unsafe fn decode(
             (page::KEYBOARD, k @ 0x01..=0xFF) => {
                 state.press(k as u8);
             }
-            (page::APPLE_TOP_CASE, page::APPLE_FN_USAGE) => state.fn_key = true,
+            (page::APPLE_TOP_CASE | page::APPLE_TOP_CASE_BT, page::APPLE_FN_USAGE) => {
+                state.fn_key = true
+            }
             (page::CONSUMER, consumer::EJECT) => state.eject = true,
             (page::CONSUMER, consumer::MENU) if lock_reports_menu => state.lock = true,
             (page::CONSUMER, consumer::MENU) => state.menu = true,
@@ -91,7 +94,9 @@ pub unsafe fn decode(
 
 /// Rebuilds `report` (same report ID) from scratch with keyboard-page usages only, so the Apple
 /// bits (Fn, Eject, Menu, Lock) never reach kbdhid. More keys than the report's array slots
-/// become an ErrorRollOver report instead of being silently truncated.
+/// become an ErrorRollOver report instead of being silently truncated. Usages outside the
+/// descriptor's range (e.g. the Bluetooth descriptor of the compact model stops at 0x65) are
+/// dropped individually so the rest of the report still goes through.
 ///
 /// # Safety
 /// `preparsed` must be the preparsed data of the collection that produced `report`.
@@ -114,12 +119,34 @@ pub unsafe fn encode(
         n += 1;
     }
 
-    let status = unsafe { set_usages(preparsed, report, &mut usages[..n]) };
+    let mut status = unsafe { set_usages(preparsed, report, &mut usages[..n]) };
+    if status == HIDP_STATUS_USAGE_NOT_FOUND {
+        status = unsafe { set_each(preparsed, report, &mut usages[..n]) };
+    }
     if status != HIDP_STATUS_BUFFER_TOO_SMALL {
         return status;
     }
     usages[mods] = kbd::ERROR_ROLLOVER as USAGE;
     unsafe { set_usages(preparsed, report, &mut usages[..=mods]) }
+}
+
+/// Sets usages one at a time, skipping those the descriptor cannot carry.
+unsafe fn set_each(
+    preparsed: PHIDP_PREPARSED_DATA,
+    report: &mut [u8],
+    usages: &mut [USAGE],
+) -> NTSTATUS {
+    let status = unsafe { set_usages(preparsed, report, &mut []) };
+    if status != HIDP_STATUS_SUCCESS {
+        return status;
+    }
+    for i in 0..usages.len() {
+        let status = unsafe { add_usages(preparsed, report, &mut usages[i..=i]) };
+        if status != HIDP_STATUS_SUCCESS && status != HIDP_STATUS_USAGE_NOT_FOUND {
+            return status;
+        }
+    }
+    HIDP_STATUS_SUCCESS
 }
 
 unsafe fn set_usages(
@@ -128,12 +155,29 @@ unsafe fn set_usages(
     usages: &mut [USAGE],
 ) -> NTSTATUS {
     let id = report[0];
-    let buffer = report.as_mut_ptr() as PCHAR;
-    let length = report.len() as ULONG;
-    let status = unsafe { HidP_InitializeReportForID(HidP_Input, id, preparsed, buffer, length) };
+    let status = unsafe {
+        HidP_InitializeReportForID(
+            HidP_Input,
+            id,
+            preparsed,
+            report.as_mut_ptr() as PCHAR,
+            report.len() as ULONG,
+        )
+    };
     if status != HIDP_STATUS_SUCCESS || usages.is_empty() {
         return status;
     }
+    unsafe { add_usages(preparsed, report, usages) }
+}
+
+/// Adds keyboard-page usages to an already initialized report.
+unsafe fn add_usages(
+    preparsed: PHIDP_PREPARSED_DATA,
+    report: &mut [u8],
+    usages: &mut [USAGE],
+) -> NTSTATUS {
+    let buffer = report.as_mut_ptr() as PCHAR;
+    let length = report.len() as ULONG;
     let mut count = usages.len() as ULONG;
     unsafe {
         HidP_SetUsages(

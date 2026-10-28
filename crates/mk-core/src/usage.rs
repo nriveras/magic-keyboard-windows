@@ -5,8 +5,10 @@ pub mod page {
     pub const GENERIC_DESKTOP: u16 = 0x01;
     pub const KEYBOARD: u16 = 0x07;
     pub const CONSUMER: u16 = 0x0C;
-    /// Apple "top case" vendor page; usage 0x03 is the Fn key.
+    /// Apple "top case" vendor page; usage 0x03 is the Fn key (USB descriptors).
     pub const APPLE_TOP_CASE: u16 = 0x00FF;
+    /// Vendor page carrying the same Fn usage in the Bluetooth descriptors of the 2021 models.
+    pub const APPLE_TOP_CASE_BT: u16 = 0xFF01;
     pub const APPLE_FN_USAGE: u16 = 0x0003;
 }
 

@@ -117,3 +117,10 @@ Paired over Bluetooth, both keyboards enumerate as `HID\{00001124-0000-1000-8000
 
 There is no separate consumer collection over Bluetooth. The keyboard collection is added to
 mkfilter.inx for both models; the driver decodes with HidP, so the extra feature report needs no change.
+
+**Bluetooth keyboard report 01 (from `mk-probe caps Col01`):**
+- Modifiers `E0..E7` (idx 0–7), then a byte declared as 8 × `FF00:0003` (idx 8; the reserved byte).
+- Key array page 07: `0x00..0xFF` on 029F, but only **`0x00..0x65`** on 029A. The driver drops
+  unrepresentable usages one by one instead of forwarding the original report.
+- **Fn is `FF01:0003`** (USB: `00FF:0003`); Lock is consumer `0x40` as over USB. No Eject bit.
+- First BT test: Fn+⌫ and Fn+F-keys did nothing until `FF01:0003` was decoded as Fn.
