@@ -562,6 +562,58 @@ fn deferred_double_tap_fires_before_next_key() {
 }
 
 #[test]
+fn deferred_double_tap_survives_a_held_third_fn_press() {
+    let mut cfg = Config::default();
+    cfg.fn_double_tap = FnDoubleTap::ToggleFnLock;
+    let mut h = H::with(cfg);
+    tap_fn(&mut h, 1000);
+    tap_fn(&mut h, 1200);
+    // Third press is not a tap: Fn is held and used with F1.
+    h.send_at(1400, fnks(&[]));
+    let out = h.send_at(1450, fnks(&[0x3A]));
+    assert_eq!(
+        out.notification,
+        Some(Notification::FnLockChanged(FnMode::FKeysFirst))
+    );
+    assert_eq!(h.e.config().fn_mode, FnMode::FKeysFirst);
+    assert_eq!(
+        consumer(&out),
+        vec![consumer::BRIGHTNESS_DOWN],
+        "Fn+F1 resolved with the new mode"
+    );
+}
+
+#[test]
+fn deferred_double_tap_fires_when_third_fn_press_is_held_too_long() {
+    let mut cfg = Config::default();
+    cfg.fn_double_tap = FnDoubleTap::ToggleFnLock;
+    let mut h = H::with(cfg);
+    tap_fn(&mut h, 1000);
+    tap_fn(&mut h, 1200);
+    h.send_at(1400, fnks(&[]));
+    let out = h.send_at(1400 + TAP_WINDOW_MS + 100, none());
+    assert_eq!(
+        out.notification,
+        Some(Notification::FnLockChanged(FnMode::FKeysFirst))
+    );
+}
+
+#[test]
+fn held_third_fn_press_with_space_sleeps_without_toggling() {
+    let mut cfg = Config::default();
+    cfg.fn_double_tap = FnDoubleTap::ToggleFnLock;
+    let mut h = H::with(cfg);
+    tap_fn(&mut h, 1000);
+    tap_fn(&mut h, 1200);
+    h.send_at(1400, fnks(&[]));
+    let out = h.send_at(1450, fnks(&[kbd::SPACE]));
+    assert_eq!(out.system, system::SLEEP);
+    assert_eq!(out.notification, None);
+    h.send_at(1500, none());
+    assert_eq!(h.e.config().fn_mode, FnMode::MediaFirst);
+}
+
+#[test]
 fn double_tap_dictation_pulses_win_h() {
     let mut cfg = Config::default();
     cfg.fn_double_tap = FnDoubleTap::Dictation;

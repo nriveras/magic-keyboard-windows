@@ -79,6 +79,9 @@ pub struct Engine {
     /// Fn is currently held as the third press of a tap sequence.
     third_press: bool,
     pending_double_at: Option<u32>,
+    /// A deferred double tap waits for the current Fn press: dropped if it becomes a triple tap,
+    /// fired otherwise.
+    double_held: bool,
     sleep_armed_until: Option<u32>,
 }
 
@@ -105,6 +108,7 @@ impl Engine {
             last_tap_ms: 0,
             third_press: false,
             pending_double_at: None,
+            double_held: false,
             sleep_armed_until: None,
         }
     }
@@ -226,6 +230,7 @@ impl Engine {
         self.tap_count = 0;
         self.third_press = false;
         self.pending_double_at = None;
+        self.double_held = false;
         self.sleep_armed_until = None;
         self.build(out);
     }
@@ -425,7 +430,9 @@ impl Engine {
         self.fn_down_clean = true;
         self.fn_press_ms = now;
         // A further tap is starting: hold the pending double-tap until we know whether it is a triple.
-        self.pending_double_at = None;
+        if self.pending_double_at.take().is_some() {
+            self.double_held = true;
+        }
         self.third_press = self.tap_count >= 2 && elapsed(now, self.last_tap_ms) <= TAP_WINDOW_MS;
     }
 
@@ -435,6 +442,7 @@ impl Engine {
         self.fn_down_clean = false;
         if !is_tap {
             self.tap_count = 0;
+            self.fire_held_double(out);
             return;
         }
         let gap_ok = elapsed(self.fn_press_ms, self.last_tap_ms) <= TAP_WINDOW_MS;
@@ -456,7 +464,17 @@ impl Engine {
             }
         } else if self.tap_count >= 3 && self.cfg.sleep_combo {
             self.pending_double_at = None;
+            self.double_held = false;
             self.sleep_armed_until = Some(now.wrapping_add(SLEEP_ARM_MS));
+        }
+        self.fire_held_double(out);
+    }
+
+    /// Fires a double tap that waited for a Fn press which did not turn it into a triple tap.
+    fn fire_held_double(&mut self, out: &mut Outputs) {
+        if core::mem::take(&mut self.double_held) {
+            self.tap_count = 0;
+            self.fire_double(out);
         }
     }
 
@@ -477,6 +495,12 @@ impl Engine {
             if armed || (fn_held && self.third_press) {
                 over = Some(Action::System(system::SLEEP));
             }
+        }
+        if over.is_some() {
+            self.double_held = false; // Fn, Fn, Fn + Space: sleep only
+        } else {
+            // Fn held for a chord: the third press is no tap, so the double tap stands.
+            self.fire_held_double(out);
         }
         self.sleep_armed_until = None;
         self.third_press = false;
