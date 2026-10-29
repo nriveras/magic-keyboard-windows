@@ -8,6 +8,7 @@ use core::ffi::c_void;
 use core::ptr::null_mut;
 use core::sync::atomic::{AtomicPtr, Ordering};
 
+use mk_core::merge::VirtualMerge;
 use mk_core::proto::{PROTOCOL_VERSION, Status};
 use mk_core::sync::SharedConfig;
 use mk_core::{Config, model};
@@ -29,6 +30,8 @@ pub struct Shared {
     pub keyboards: u8,
     pub last_pid: u16,
     pub status_gen: u32,
+    /// Combines the virtual outputs of all keyboards for the one VHF device.
+    pub virt: VirtualMerge,
 }
 
 impl Shared {
@@ -77,6 +80,7 @@ static STATE: StateCell = StateCell(UnsafeCell::new(Shared {
     keyboards: 0,
     last_pid: 0,
     status_gen: 0,
+    virt: VirtualMerge::new(),
 }));
 
 static LOCK: AtomicPtr<c_void> = AtomicPtr::new(null_mut());

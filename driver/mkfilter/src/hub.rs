@@ -57,8 +57,9 @@ pub fn is_ready() -> bool {
     shared::with(|s| !s.vhf.is_null()).unwrap_or(false)
 }
 
-/// Sends the virtual-device part of `out` (only what changed). IRQL <= DISPATCH_LEVEL.
-pub fn submit(out: &Outputs) {
+/// Sends the virtual-device part of `out` from keyboard `source` (its device context address),
+/// combined with what the other keyboards hold; only what changed. IRQL <= DISPATCH_LEVEL.
+pub fn submit(source: usize, out: &Outputs) {
     if !out.any_virtual_change() {
         return;
     }
@@ -67,22 +68,23 @@ pub fn submit(out: &Outputs) {
         if handle.is_null() {
             return;
         }
-        if let Some(pulse) = &out.pulse {
+        let merged = s.virt.update(source, out);
+        if let Some(pulse) = &merged.pulse {
             send_keyboard(handle, pulse);
-            send_keyboard(handle, &out.virt_keyboard);
-        } else if out.virt_keyboard_changed {
-            send_keyboard(handle, &out.virt_keyboard);
         }
-        if out.consumer_changed {
+        if let Some(keyboard) = &merged.keyboard {
+            send_keyboard(handle, keyboard);
+        }
+        if let Some(consumer) = merged.consumer {
             let mut report = [0u8; 1 + 2 * MAX_CONSUMER];
             report[0] = REPORT_CONSUMER;
-            for (i, usage) in out.consumer.iter().enumerate() {
+            for (i, usage) in consumer.iter().enumerate() {
                 report[1 + 2 * i..3 + 2 * i].copy_from_slice(&usage.to_le_bytes());
             }
             send(handle, &mut report);
         }
-        if out.system_changed {
-            let value = match out.system {
+        if let Some(system) = merged.system {
+            let value = match system {
                 u @ 0x81..=0x83 => u - SYSTEM_BASE,
                 _ => 0,
             };
@@ -159,6 +161,7 @@ pub unsafe fn device_add(mut init: PWDFDEVICE_INIT) -> NTSTATUS {
             return false;
         }
         s.vhf = handle;
+        s.virt.reset(); // a new device starts with nothing pressed
         s.hub = device as WDFOBJECT;
         s.status_changed();
         true

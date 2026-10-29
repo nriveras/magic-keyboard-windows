@@ -7,11 +7,12 @@
 
 pub mod config;
 pub mod engine;
+pub mod merge;
 pub mod model;
 pub mod proto;
 pub mod state;
-pub mod usage;
 pub mod sync;
+pub mod usage;
 
 pub use config::Config;
 pub use engine::Engine;

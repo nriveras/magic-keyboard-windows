@@ -233,7 +233,7 @@ extern "C" fn evt_d0_exit(device: WDFDEVICE, _target_state: WDF_POWER_DEVICE_STA
         let mut out = Outputs::default();
         call_unsafe_wdf_function_binding!(WdfSpinLockAcquire, (*ctx).lock);
         (*ctx).engine.release_all(&mut out);
-        hub::submit(&out);
+        hub::submit(ctx as usize, &out);
         call_unsafe_wdf_function_binding!(WdfSpinLockRelease, (*ctx).lock);
     }
     STATUS_SUCCESS
@@ -251,7 +251,7 @@ extern "C" fn evt_timer(timer: WDFTIMER) {
         sync_config(ctx);
         let now = now_ms();
         (*ctx).engine.tick(now, &mut out);
-        hub::submit(&out);
+        hub::submit(ctx as usize, &out);
         publish(ctx, &out);
         schedule_timer(ctx, now);
         call_unsafe_wdf_function_binding!(WdfSpinLockRelease, (*ctx).lock);
@@ -526,7 +526,7 @@ unsafe fn remap(ctx: *mut DeviceContext, report: &mut [u8]) {
             report.copy_from_slice(&original[..report.len()]);
         }
         // Submitted under the device lock so virtual reports keep the order of the input reports.
-        hub::submit(&out);
+        hub::submit(ctx as usize, &out);
         publish(ctx, &out);
         schedule_timer(ctx, now);
         call_unsafe_wdf_function_binding!(WdfSpinLockRelease, lock);
