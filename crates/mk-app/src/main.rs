@@ -26,6 +26,8 @@ mod icon;
 mod settings;
 #[cfg(windows)]
 mod system;
+#[cfg_attr(not(windows), allow(dead_code))]
+mod watch;
 
 #[cfg(windows)]
 fn main() {
@@ -38,8 +40,8 @@ fn main() {
 #[cfg(windows)]
 mod app {
     use std::cell::RefCell;
+    use std::io;
     use std::ptr::{null, null_mut};
-    use std::time::Duration;
 
     use mk_core::config::FnMode;
     use mk_core::proto::Status;
@@ -69,6 +71,7 @@ mod app {
     use crate::health;
     use crate::icon::{self, Level};
     use crate::system::{self, wide, TRAY_CLASS, WM_RELOAD};
+    use crate::watch::{self, StatusSource};
 
     const WM_TRAY: u32 = WM_APP + 1;
     /// Posted by the watcher thread when the driver status changed (or the hub came/went).
@@ -175,22 +178,29 @@ mod app {
         }
     }
 
+    impl StatusSource for Control {
+        fn status(&self) -> io::Result<Status> {
+            Control::status(self)
+        }
+
+        fn wait_status(&self, generation: u32) -> io::Result<Status> {
+            Control::wait_status(self, generation)
+        }
+    }
+
     /// Waits for driver status changes on its own handle and pokes the UI thread.
     fn spawn_watcher(hwnd: usize) {
-        std::thread::spawn(move || loop {
-            match Control::open() {
-                Ok(control) => {
-                    let mut generation = control.status().map(|s| s.generation).unwrap_or(0);
-                    unsafe { PostMessageW(hwnd as HWND, WM_DRIVER, 0, 0) };
-                    while let Ok(status) = control.wait_status(generation) {
-                        generation = status.generation;
-                        unsafe { PostMessageW(hwnd as HWND, WM_DRIVER, 0, 0) };
-                    }
-                    // Hub removed or driver reinstalled.
-                    unsafe { PostMessageW(hwnd as HWND, WM_DRIVER, 0, 0) };
-                }
-                Err(_) => std::thread::sleep(Duration::from_secs(5)),
-            }
+        std::thread::spawn(move || {
+            watch::run(
+                Control::open,
+                || unsafe {
+                    PostMessageW(hwnd as HWND, WM_DRIVER, 0, 0);
+                },
+                |delay| {
+                    std::thread::sleep(delay);
+                    true
+                },
+            )
         });
     }
 

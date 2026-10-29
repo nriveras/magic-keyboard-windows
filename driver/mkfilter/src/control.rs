@@ -15,9 +15,10 @@ use wdk_sys::{
     _WDF_IO_QUEUE_DISPATCH_TYPE::{WdfIoQueueDispatchManual, WdfIoQueueDispatchParallel},
     _WDF_SYNCHRONIZATION_SCOPE::WdfSynchronizationScopeInheritFromParent,
     _WDF_TRI_STATE::WdfFalse,
-    GUID, NTSTATUS, PVOID, STATUS_INVALID_DEVICE_REQUEST, STATUS_INVALID_PARAMETER, STATUS_SUCCESS,
-    ULONG, WDF_EXECUTION_LEVEL, WDF_IO_QUEUE_CONFIG, WDF_OBJECT_ATTRIBUTES, WDFDEVICE, WDFOBJECT,
-    WDFQUEUE, WDFREQUEST, call_unsafe_wdf_function_binding,
+    GUID, NTSTATUS, PVOID, STATUS_DEVICE_NOT_READY, STATUS_INVALID_DEVICE_REQUEST,
+    STATUS_INVALID_PARAMETER, STATUS_SUCCESS, ULONG, WDF_EXECUTION_LEVEL, WDF_IO_QUEUE_CONFIG,
+    WDF_OBJECT_ATTRIBUTES, WDFDEVICE, WDFOBJECT, WDFQUEUE, WDFREQUEST,
+    call_unsafe_wdf_function_binding,
 };
 
 use crate::{nt_success, registry, shared};
@@ -238,8 +239,12 @@ fn wait_status(request: WDFREQUEST) {
     }
     // Check and park under one lock hold so a concurrent change cannot slip in between.
     let outcome = shared::with(|s| {
-        if s.status_gen != last_seen || s.wait_queue.is_null() {
+        if s.status_gen != last_seen {
             return Outcome::Now(s.status().to_bytes());
+        }
+        if s.wait_queue.is_null() {
+            // Hub going away: an unchanged status now would make the caller spin.
+            return Outcome::Failed(STATUS_DEVICE_NOT_READY);
         }
         let st = unsafe {
             call_unsafe_wdf_function_binding!(WdfRequestForwardToIoQueue, request, s.wait_queue)
