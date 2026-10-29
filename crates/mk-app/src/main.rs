@@ -24,6 +24,8 @@ mod health;
 mod icon;
 #[cfg(windows)]
 mod settings;
+#[cfg_attr(not(windows), allow(dead_code))]
+mod slot;
 #[cfg(windows)]
 mod system;
 #[cfg_attr(not(windows), allow(dead_code))]
@@ -42,6 +44,7 @@ mod app {
     use std::cell::RefCell;
     use std::io;
     use std::ptr::{null, null_mut};
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     use mk_core::config::FnMode;
     use mk_core::proto::Status;
@@ -70,12 +73,16 @@ mod app {
     use crate::devices;
     use crate::health;
     use crate::icon::{self, Level};
+    use crate::slot::with_slot;
     use crate::system::{self, wide, TRAY_CLASS, WM_RELOAD};
     use crate::watch::{self, StatusSource};
 
     const WM_TRAY: u32 = WM_APP + 1;
     /// Posted by the watcher thread when the driver status changed (or the hub came/went).
     const WM_DRIVER: u32 = WM_APP + 2;
+    /// Registered "TaskbarCreated" message; outside `App` so the window procedure can match it
+    /// even while the state is borrowed.
+    static TASKBAR_CREATED: AtomicU32 = AtomicU32::new(0);
 
     const TRAY_ID: u32 = 1;
     const BATTERY_TIMER: usize = 1;
@@ -103,15 +110,23 @@ mod app {
         /// Why a filtered keyboard is not running (driver blocked or failed), if one is not.
         failure: Option<String>,
         failure_notified: bool,
-        taskbar_created: u32,
     }
 
     thread_local! {
         static APP: RefCell<Option<App>> = const { RefCell::new(None) };
     }
 
+    /// Runs `f` on the tray state. `None` when re-entered from a message sent while the state is
+    /// in use; keep Win32 calls that can dispatch sent messages (Shell_NotifyIconW, MessageBoxW,
+    /// TrackPopupMenu) outside `f`.
     fn with_app<R>(f: impl FnOnce(&mut App) -> R) -> Option<R> {
-        APP.with(|a| a.borrow_mut().as_mut().map(f))
+        APP.with(|a| with_slot(a, f))
+    }
+
+    fn shell_notify(message: u32, nid: Option<NOTIFYICONDATAW>) {
+        if let Some(nid) = nid {
+            unsafe { Shell_NotifyIconW(message, &nid) };
+        }
     }
 
     pub fn run() {
@@ -148,6 +163,7 @@ mod app {
             return;
         }
         let taskbar_created = unsafe { RegisterWindowMessageW(wide("TaskbarCreated").as_ptr()) };
+        TASKBAR_CREATED.store(taskbar_created, Ordering::Relaxed);
         APP.with(|a| {
             *a.borrow_mut() = Some(App {
                 hwnd,
@@ -158,7 +174,6 @@ mod app {
                 low_warned: false,
                 failure: None,
                 failure_notified: false,
-                taskbar_created,
             })
         });
 
@@ -337,46 +352,50 @@ mod app {
         }
     }
 
-    fn add_tray_icon() {
-        with_app(|a| {
-            let new_icon = icon::render(current_level(a), system::light_taskbar());
-            if !a.icon.is_null() {
-                unsafe { DestroyIcon(a.icon) };
-            }
-            a.icon = new_icon;
-            let mut nid = tray_data(a);
-            nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+    /// Renders the current icon and tooltip; returns the data and the icon it replaces, which the
+    /// caller destroys after the shell has switched over.
+    fn icon_data(a: &mut App) -> (NOTIFYICONDATAW, HICON) {
+        let new_icon = icon::render(current_level(a), system::light_taskbar());
+        let old_icon = std::mem::replace(&mut a.icon, new_icon);
+        let mut nid = tray_data(a);
+        nid.uFlags = NIF_ICON | NIF_TIP;
+        nid.hIcon = new_icon;
+        copy_into(&mut nid.szTip, &tooltip(a));
+        (nid, old_icon)
+    }
+
+    fn set_tray_icon(message: u32) {
+        let Some((mut nid, old_icon)) = with_app(icon_data) else {
+            return;
+        };
+        if message == NIM_ADD {
+            nid.uFlags |= NIF_MESSAGE;
             nid.uCallbackMessage = WM_TRAY;
-            nid.hIcon = a.icon;
-            copy_into(&mut nid.szTip, &tooltip(a));
-            unsafe { Shell_NotifyIconW(NIM_ADD, &nid) };
-        });
+        }
+        shell_notify(message, Some(nid));
+        if !old_icon.is_null() {
+            unsafe { DestroyIcon(old_icon) };
+        }
+    }
+
+    fn add_tray_icon() {
+        set_tray_icon(NIM_ADD);
     }
 
     fn update_tray_icon() {
-        with_app(|a| {
-            let new_icon = icon::render(current_level(a), system::light_taskbar());
-            let mut nid = tray_data(a);
-            nid.uFlags = NIF_ICON | NIF_TIP;
-            nid.hIcon = new_icon;
-            copy_into(&mut nid.szTip, &tooltip(a));
-            unsafe { Shell_NotifyIconW(NIM_MODIFY, &nid) };
-            if !a.icon.is_null() {
-                unsafe { DestroyIcon(a.icon) };
-            }
-            a.icon = new_icon;
-        });
+        set_tray_icon(NIM_MODIFY);
     }
 
     fn notify(title: &str, text: &str) {
-        with_app(|a| {
+        let nid = with_app(|a| {
             let mut nid = tray_data(a);
             nid.uFlags = NIF_INFO;
             nid.dwInfoFlags = NIIF_WARNING;
             copy_into(&mut nid.szInfoTitle, title);
             copy_into(&mut nid.szInfo, text);
-            unsafe { Shell_NotifyIconW(NIM_MODIFY, &nid) };
+            nid
         });
+        shell_notify(NIM_MODIFY, nid);
     }
 
     fn error_box(hwnd: HWND, text: &str) {
@@ -551,14 +570,11 @@ mod app {
                 unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
             }
             WM_DESTROY => {
-                with_app(|a| {
-                    let nid = tray_data(a);
-                    unsafe { Shell_NotifyIconW(NIM_DELETE, &nid) };
-                });
+                shell_notify(NIM_DELETE, with_app(|a| tray_data(a)));
                 unsafe { PostQuitMessage(0) };
                 0
             }
-            _ if with_app(|a| a.taskbar_created == msg).unwrap_or(false) => {
+            _ if msg != 0 && msg == TASKBAR_CREATED.load(Ordering::Relaxed) => {
                 // Explorer restarted: the icon is gone and must be added again.
                 add_tray_icon();
                 0
