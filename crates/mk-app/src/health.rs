@@ -1,6 +1,7 @@
 //! Detects a filtered keyboard whose driver stack failed to start, typically because Secure Boot
-//! was turned back on: Windows then refuses the test-signed driver (problem code 52) and the
-//! keyboard stops working until Secure Boot is off again or the driver is uninstalled.
+//! was turned back on or test-signing mode turned off: Windows then refuses the test-signed driver
+//! (problem code 52) and the keyboard stops working until that is undone or the driver is
+//! uninstalled.
 
 use std::ptr::null_mut;
 
@@ -26,9 +27,15 @@ pub struct Failure {
 impl Failure {
     /// Text for the tray notification and menu.
     pub fn message(&self, secure_boot: bool) -> String {
-        if self.problem == PROBLEM_UNSIGNED_DRIVER || secure_boot {
+        if secure_boot {
             "Windows blocked the Magic Keyboard driver (Secure Boot is on). Turn Secure Boot off \
              again, or run uninstall.cmd to get the standard keyboard back."
+                .into()
+        } else if self.problem == PROBLEM_UNSIGNED_DRIVER {
+            // Signature rejected with Secure Boot off: test-signing mode was turned off.
+            "Windows blocked the Magic Keyboard driver because test-signing mode is off. Run \
+             'bcdedit /set testsigning on' as administrator and restart, or run uninstall.cmd to \
+             get the standard keyboard back."
                 .into()
         } else {
             format!(
@@ -132,6 +139,28 @@ pub fn secure_boot_on() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn blocked_driver_names_secure_boot_only_when_it_is_on() {
+        let blocked = Failure {
+            problem: PROBLEM_UNSIGNED_DRIVER,
+        };
+        assert!(blocked.message(true).contains("Secure Boot is on"));
+
+        // Test signing turned off while the driver is still installed.
+        let text = blocked.message(false);
+        assert!(!text.contains("Secure Boot"), "{text}");
+        assert!(text.contains("testsigning on"), "{text}");
+        assert!(text.contains("uninstall.cmd"), "{text}");
+    }
+
+    #[test]
+    fn other_failures_show_the_problem_code() {
+        let failed = Failure { problem: 10 };
+        let text = failed.message(false);
+        assert!(text.contains("code 10"), "{text}");
+        assert!(failed.message(true).contains("Secure Boot is on"));
+    }
 
     #[test]
     fn recognises_usb_and_bluetooth_keyboard_collections() {

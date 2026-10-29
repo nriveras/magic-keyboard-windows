@@ -73,8 +73,8 @@ the previous driver keeps running until you restart.
 
 Double-click `scripts\uninstall.cmd` (it asks for administrator rights; works with the mouse alone),
 or run `scripts\uninstall.ps1` in an administrator PowerShell. Add `-RemoveSettings` to also delete
-the app settings. Test-signing mode stays on: turn it off with `bcdedit /set testsigning off` and
-reboot.
+the app settings. Test-signing mode stays on: once the driver is removed, turn it off with
+`bcdedit /set testsigning off` and reboot.
 
 ## If something goes wrong
 
@@ -82,6 +82,9 @@ reboot.
   driver comes back.
 - **Keyboard stopped working after turning Secure Boot on** (tray: "driver failed to load"): turn
   Secure Boot off again, or run `scripts\uninstall.cmd` — see the note under Requirements.
+- **Keyboard stopped working after `bcdedit /set testsigning off`** (the tray says test-signing mode
+  is off): turn it back on with `bcdedit /set testsigning on` and restart, or run
+  `scripts\uninstall.cmd`.
 - **Windows does not start**: boot into Safe Mode and run `scripts\uninstall.cmd`, or use System
   Restore → "before mkfilter".
 
