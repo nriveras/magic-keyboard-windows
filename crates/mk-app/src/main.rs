@@ -19,6 +19,8 @@ mod appconfig;
 #[cfg(windows)]
 mod devices;
 #[cfg(windows)]
+mod health;
+#[cfg(windows)]
 mod icon;
 #[cfg(windows)]
 mod settings;
@@ -64,6 +66,7 @@ mod app {
 
     use crate::appconfig::{self, AppConfig};
     use crate::devices;
+    use crate::health;
     use crate::icon::{self, Level};
     use crate::system::{self, wide, TRAY_CLASS, WM_RELOAD};
 
@@ -80,6 +83,7 @@ mod app {
     const CMD_AUTOSTART: usize = 12;
     const CMD_QUIT: usize = 13;
     const CMD_SETTINGS: usize = 14;
+    const CMD_DRIVER_HELP: usize = 15;
 
     /// F16–F19 launcher keys (hotkey id = index + 1); targets come from app.toml.
     const LAUNCHER_KEYS: [u16; appconfig::LAUNCHER_COUNT] = [VK_F16, VK_F17, VK_F18, VK_F19];
@@ -93,6 +97,9 @@ mod app {
         config: AppConfig,
         /// The low-battery warning was shown; re-armed when charging or above threshold + 5.
         low_warned: bool,
+        /// Why a filtered keyboard is not running (driver blocked or failed), if one is not.
+        failure: Option<String>,
+        failure_notified: bool,
         taskbar_created: u32,
     }
 
@@ -146,6 +153,8 @@ mod app {
                 batteries: Vec::new(),
                 config: appconfig::load(),
                 low_warned: false,
+                failure: None,
+                failure_notified: false,
                 taskbar_created,
             })
         });
@@ -187,7 +196,20 @@ mod app {
 
     fn refresh_driver() {
         let status = Control::open().and_then(|c| c.status()).ok();
-        with_app(|a| a.status = status);
+        let failure = health::failed_keyboard().map(|f| f.message(health::secure_boot_on()));
+        let notify_now = with_app(|a| {
+            a.status = status;
+            let first = failure.is_some() && !a.failure_notified;
+            a.failure_notified = failure.is_some();
+            a.failure = failure.clone();
+            first
+        })
+        .unwrap_or(false);
+        if notify_now {
+            if let Some(text) = &failure {
+                notify("Magic Keyboard driver not running", text);
+            }
+        }
     }
 
     /// Claims F16–F19 for the enabled launchers only, so a disabled one types a plain F-key.
@@ -256,6 +278,9 @@ mod app {
     }
 
     fn driver_text(a: &App) -> &'static str {
+        if a.failure.is_some() {
+            return "driver failed to load";
+        }
         match &a.status {
             None => "driver not installed",
             Some(s) if s.keyboards == 0 => "no keyboard",
@@ -370,7 +395,7 @@ mod app {
     }
 
     fn show_menu(hwnd: HWND) {
-        let Some((battery_lines, driver_line, fn_mode, driver_ok)) = with_app(|a| {
+        let Some((battery_lines, driver_line, fn_mode, driver_ok, failure)) = with_app(|a| {
             let batteries = if a.batteries.is_empty() {
                 vec!["Battery: unknown".to_string()]
             } else {
@@ -384,6 +409,7 @@ mod app {
                 format!("Driver: {}", driver_text(a)),
                 a.status.as_ref().and_then(|s| FnMode::from_u8(s.fn_mode)),
                 a.status.is_some(),
+                a.failure.clone(),
             )
         }) else {
             return;
@@ -398,7 +424,15 @@ mod app {
             for line in &battery_lines {
                 item(MF_STRING | MF_GRAYED, 0, line);
             }
-            item(MF_STRING | MF_GRAYED, 0, &driver_line);
+            if failure.is_some() {
+                item(
+                    MF_STRING,
+                    CMD_DRIVER_HELP,
+                    &format!("⚠ {driver_line} — what to do…"),
+                );
+            } else {
+                item(MF_STRING | MF_GRAYED, 0, &driver_line);
+            }
             AppendMenuW(menu, MF_SEPARATOR, 0, null());
             let enabled = if driver_ok { 0 } else { MF_GRAYED };
             let checked = |m: FnMode| if fn_mode == Some(m) { MF_CHECKED } else { 0 };
@@ -441,6 +475,11 @@ mod app {
                 CMD_MEDIA_FIRST => set_fn_mode(hwnd, FnMode::MediaFirst),
                 CMD_FKEYS_FIRST => set_fn_mode(hwnd, FnMode::FKeysFirst),
                 CMD_SETTINGS => open_settings(hwnd),
+                CMD_DRIVER_HELP => {
+                    if let Some(text) = &failure {
+                        error_box(hwnd, text);
+                    }
+                }
                 CMD_AUTOSTART => {
                     if let Err(e) = system::set_autostart(!system::autostart_enabled()) {
                         error_box(hwnd, &format!("Could not change autostart:\n{e}"));
@@ -480,6 +519,7 @@ mod app {
                 0
             }
             WM_TIMER if wparam == BATTERY_TIMER => {
+                refresh_driver();
                 refresh_battery();
                 0
             }

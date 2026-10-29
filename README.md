@@ -38,6 +38,14 @@ The kernel driver is self-built and **test-signed**. Loading it requires:
 
 If BitLocker is on, have your recovery key at hand before changing Secure Boot.
 
+> **Secure Boot must stay off while the driver is installed.** Windows checks driver signatures at
+> every boot: with Secure Boot back on, test mode is disabled, the driver is rejected (Device Manager
+> code 52) and the Magic Keyboards **stop working entirely** — the driver sits in their driver chain.
+> Other keyboards and the mouse keep working. The tray app warns when this happens. Fix it by turning
+> Secure Boot off again, or by running `scripts\uninstall.cmd` before (or after) turning it on.
+> Running with Secure Boot on requires a Microsoft-signed driver (EV certificate + attestation
+> signing), which this project does not have.
+
 ## Install
 
 Plug in the keyboard(s) over USB, then in an **administrator PowerShell** in this folder:
@@ -72,6 +80,8 @@ reboot.
 
 - **Keyboard stops working**: double-click `scripts\uninstall.cmd` with the mouse — the stock Windows
   driver comes back.
+- **Keyboard stopped working after turning Secure Boot on** (tray: "driver failed to load"): turn
+  Secure Boot off again, or run `scripts\uninstall.cmd` — see the note under Requirements.
 - **Windows does not start**: boot into Safe Mode and run `scripts\uninstall.cmd`, or use System
   Restore → "before mkfilter".
 

@@ -15,6 +15,7 @@ toml = "0.8"
 mk-hid = { path = "../mk-hid" }
 eframe = { version = "0.32", default-features = false, features = ["accesskit", "default_fonts", "glow"] }
 windows-sys = { version = "0.61", features = [
+    "Win32_Devices_DeviceAndDriverInstallation",
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
     "Win32_Security",

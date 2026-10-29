@@ -75,4 +75,5 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Hardware test: install.ps1 (release driver + app, update needs one restart: shared driver image)
 - [ ] Hardware test: uninstall.cmd
 - [ ] Driver Verifier run
+- [x] README: Secure Boot must stay off while installed (code 52 → keyboards stop); tray warns when a filtered keyboard fails to start
 - [ ] Driverless fallback mode (Secure Boot on)
