@@ -28,6 +28,9 @@ Everything except the tray app runs in the driver, so it also works at the login
 
 ## Requirements
 
+**Windows 11** (64-bit, build 22000 or later): the driver uses KMDF 1.33, which Windows 10 does not
+have, and the installer refuses older versions.
+
 The kernel driver is self-built and **test-signed**. Loading it requires:
 
 1. **Secure Boot off** (firmware settings).

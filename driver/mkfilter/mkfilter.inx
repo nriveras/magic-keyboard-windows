@@ -24,9 +24,9 @@ DefaultDestDir = 13
 mkfilter.sys = 1,,
 
 [Manufacturer]
-%ManufacturerName% = MagicKbd,NT$ARCH$.10.0...16299
+%ManufacturerName% = MagicKbd,NT$ARCH$.10.0...22000
 
-[MagicKbd.NT$ARCH$.10.0...16299]
+[MagicKbd.NT$ARCH$.10.0...22000]
 ; Keyboard collections confirmed on hardware: USB (VID 05AC, interface 1) and Bluetooth
 ; (HID-over-Bluetooth service 00001124, Apple Bluetooth company ID 004C).
 %A2520.DeviceDesc% = MkFilter_Inst, HID\VID_05AC&PID_029F&MI_01&Col01

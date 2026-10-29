@@ -26,9 +26,9 @@ DefaultDestDir = 13
 mkfilter.sys = 1,,
 
 [Manufacturer]
-%ManufacturerName% = MagicKbd,NT$ARCH$.10.0...16299
+%ManufacturerName% = MagicKbd,NT$ARCH$.10.0...22000
 
-[MagicKbd.NT$ARCH$.10.0...16299]
+[MagicKbd.NT$ARCH$.10.0...22000]
 %Hub.DeviceDesc% = MkHub_Inst, ROOT\MagicKbdHub
 
 [MkHub_Inst.NT]

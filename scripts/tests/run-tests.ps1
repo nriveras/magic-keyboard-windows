@@ -93,6 +93,35 @@ foreach ($pair in @(@('uninstall.cmd', 'uninstall.ps1'), @('uninstall-dev.cmd', 
     }
 }
 
+# --- Driver packages ------------------------------------------------------------------------------
+
+Test 'INFs only install on Windows versions that ship the KMDF version the driver needs' {
+    $toml = Get-Content -Raw (Join-Path $driver 'Cargo.toml')
+    $minor = [int]([regex]::Match($toml, 'target-kmdf-version-minor\s*=\s*(\d+)').Groups[1].Value)
+    # First Windows build that ships each KMDF 1.x runtime.
+    $firstBuild = @{ 31 = 19041; 33 = 22000 }
+    Assert $firstBuild.ContainsKey($minor) "unknown KMDF minor version $minor"
+    foreach ($inx in 'mkfilter.inx', 'mkhub.inx') {
+        $text = Get-Content -Raw (Join-Path $driver $inx)
+        $builds = [regex]::Matches($text, 'NT\$ARCH\$\.10\.0\.\.\.(\d+)') | ForEach-Object { [int]$_.Groups[1].Value }
+        Assert ($builds.Count -gt 0) "$inx has no OS-decorated models section"
+        foreach ($b in $builds) {
+            Assert ($b -ge $firstBuild[$minor]) "$inx allows build $b, KMDF 1.$minor needs $($firstBuild[$minor])"
+        }
+    }
+}
+
+Test 'install-dev.ps1 refuses Windows builds older than the driver supports' {
+    $text = Get-Content -Raw (Join-Path $scripts 'install-dev.ps1')
+    Assert ($text -match 'CurrentBuild') 'install-dev.ps1 does not check the Windows build'
+    Assert ($text -match '22000') 'install-dev.ps1 does not require build 22000'
+}
+
+Test 'README states the Windows 11 requirement' {
+    $text = Get-Content -Raw (Join-Path $root 'README.md')
+    Assert ($text -match 'Windows 11') 'README does not mention Windows 11'
+}
+
 Write-Host ''
 if ($script:failed -gt 0) {
     Write-Host "$script:failed test(s) failed" -ForegroundColor Red

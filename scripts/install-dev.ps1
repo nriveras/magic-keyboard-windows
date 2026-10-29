@@ -3,9 +3,9 @@
 #   - mkfilter.inf on the Apple keyboard collection (lower filter)
 #   - mkhub.inf on a root-enumerated ROOT\MagicKbdHub devnode (virtual HID device for media keys)
 #
-# Steps: check Secure Boot / test signing, create a restore point, trust the cargo-wdk test
-# certificate, force-install the filter INF, create the hub devnode if needed, install the hub INF,
-# and print the resulting devices.
+# Steps: check the Windows version and Secure Boot / test signing, create a restore point, trust the
+# cargo-wdk test certificate, force-install the filter INF, create the hub devnode if needed, install
+# the hub INF, and print the resulting devices.
 # Undo with scripts\uninstall-dev.cmd (double-click; works with the mouse alone).
 param(
     [ValidateSet('debug', 'release')]
@@ -29,6 +29,11 @@ $hubInf = Join-Path $target 'mkhub_package\mkhub.inf'
 $cer = Join-Path $target 'mkfilter_package\WDRLocalTestCert.cer'
 
 # --- Preconditions -------------------------------------------------------------------------
+# The driver is built for KMDF 1.33, which first shipped with Windows 11 (build 22000). On older
+# Windows it would not load and, as a lower filter, would take the keyboard down with it.
+$build = [int](Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').CurrentBuild
+if ($build -lt 22000) { throw "Windows 11 is required (this is Windows build $build)." }
+
 try { $secureBoot = Confirm-SecureBootUEFI } catch { $secureBoot = $false }
 if ($secureBoot) { throw 'Secure Boot is on. Turn it off in the firmware settings first.' }
 
