@@ -218,8 +218,7 @@ fn set_config(queue: WDFQUEUE, request: WDFREQUEST) -> NTSTATUS {
         }
     }
     shared::with(|s| {
-        s.config = Some(config);
-        s.config_gen = s.config_gen.wrapping_add(1);
+        s.config.set(Some(config));
         s.status_changed();
     });
     STATUS_SUCCESS

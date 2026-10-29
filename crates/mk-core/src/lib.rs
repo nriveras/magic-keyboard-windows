@@ -11,6 +11,7 @@ pub mod model;
 pub mod proto;
 pub mod state;
 pub mod usage;
+pub mod sync;
 
 pub use config::Config;
 pub use engine::Engine;

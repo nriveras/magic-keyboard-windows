@@ -246,6 +246,9 @@ extern "C" fn evt_timer(timer: WDFTIMER) {
         let ctx = device_context(device);
         let mut out = Outputs::default();
         call_unsafe_wdf_function_binding!(WdfSpinLockAcquire, (*ctx).lock);
+        // A config the app sent since the last report must be in place before a Fn-lock toggle
+        // fires and is published.
+        sync_config(ctx);
         let now = now_ms();
         (*ctx).engine.tick(now, &mut out);
         hub::submit(&out);
@@ -326,7 +329,7 @@ unsafe fn load_collection(device: WDFDEVICE) -> Result<u16, NTSTATUS> {
         s.keyboards = s.keyboards.saturating_add(1);
         s.last_pid = info.ProductID;
         s.status_changed();
-        (s.config, s.config_gen)
+        (s.config.config, s.config.generation)
     })
     .unwrap_or((None, 0));
     let config = config.unwrap_or_else(|| model.map(Config::default_for).unwrap_or_default());
@@ -406,7 +409,7 @@ unsafe fn ioctl_sync(
 /// `ctx` must be a live device context.
 unsafe fn sync_config(ctx: *mut DeviceContext) {
     let seen = unsafe { (*ctx).config_gen };
-    let update = shared::with(|s| (s.config_gen != seen).then_some((s.config_gen, s.config)));
+    let update = shared::with(|s| s.config.update_since(seen));
     if let Some(Some((generation, config))) = update {
         unsafe {
             if let Some(config) = config {
@@ -418,23 +421,21 @@ unsafe fn sync_config(ctx: *mut DeviceContext) {
 }
 
 /// Publishes engine-side changes (Fn lock toggled by a double tap) to the shared state so the app
-/// sees them. Not persisted: the registry can only be written at PASSIVE_LEVEL.
+/// and the other keyboards see them. Only the top-row mode is written, so a config the app sent
+/// meanwhile is kept; this device re-applies the merged config before its next report.
+/// Not persisted: the registry can only be written at PASSIVE_LEVEL.
 /// Caller holds the device lock.
 ///
 /// # Safety
 /// `ctx` must be a live device context.
 unsafe fn publish(ctx: *mut DeviceContext, out: &Outputs) {
-    if let Some(Notification::FnLockChanged(_)) = out.notification {
-        let config = unsafe { *(*ctx).engine.config() };
-        let generation = shared::with(|s| {
-            s.config = Some(config);
-            s.config_gen = s.config_gen.wrapping_add(1);
+    if let Some(Notification::FnLockChanged(mode)) = out.notification {
+        // Used only while no user config is set, when the engine runs with its model defaults.
+        let defaults = unsafe { *(*ctx).engine.config() };
+        shared::with(|s| {
+            s.config.set_fn_mode(mode, defaults);
             s.status_changed();
-            s.config_gen
         });
-        if let Some(generation) = generation {
-            unsafe { (*ctx).config_gen = generation };
-        }
     }
 }
 

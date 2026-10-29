@@ -9,6 +9,7 @@ use core::ptr::null_mut;
 use core::sync::atomic::{AtomicPtr, Ordering};
 
 use mk_core::proto::{PROTOCOL_VERSION, Status};
+use mk_core::sync::SharedConfig;
 use mk_core::{Config, model};
 use wdk_sys::{VHFHANDLE, WDFOBJECT, WDFQUEUE, WDFSPINLOCK, call_unsafe_wdf_function_binding};
 
@@ -21,10 +22,9 @@ pub struct Shared {
     pub hub: WDFOBJECT,
     /// Manual queue holding pending `IOCTL_WAIT_STATUS` requests, or null.
     pub wait_queue: WDFQUEUE,
-    /// User configuration (registry or `IOCTL_SET_CONFIG`); `None` means model defaults.
-    pub config: Option<Config>,
-    /// Bumped whenever `config` changes; filters re-apply it before their next report.
-    pub config_gen: u32,
+    /// User configuration (registry or `IOCTL_SET_CONFIG`, `None` = model defaults) and its
+    /// generation; filters re-apply it before their next report when the generation moved.
+    pub config: SharedConfig,
     /// Keyboards currently filtered with remapping on.
     pub keyboards: u8,
     pub last_pid: u16,
@@ -32,13 +32,16 @@ pub struct Shared {
 }
 
 impl Shared {
+    /// Defaults for the most recently attached model.
+    pub fn model_defaults(&self) -> Config {
+        model::find(model::APPLE_USB_VID, self.last_pid)
+            .map(Config::default_for)
+            .unwrap_or_default()
+    }
+
     /// The configuration the keyboards run with.
     pub fn effective_config(&self) -> Config {
-        self.config.unwrap_or_else(|| {
-            model::find(model::APPLE_USB_VID, self.last_pid)
-                .map(Config::default_for)
-                .unwrap_or_default()
-        })
+        self.config.config.unwrap_or_else(|| self.model_defaults())
     }
 
     pub fn status(&self) -> Status {
@@ -70,8 +73,7 @@ static STATE: StateCell = StateCell(UnsafeCell::new(Shared {
     vhf: null_mut(),
     hub: null_mut(),
     wait_queue: null_mut(),
-    config: None,
-    config_gen: 0,
+    config: SharedConfig::new(),
     keyboards: 0,
     last_pid: 0,
     status_gen: 0,

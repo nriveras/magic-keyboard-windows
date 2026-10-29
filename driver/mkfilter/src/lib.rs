@@ -113,7 +113,7 @@ pub unsafe extern "system" fn driver_entry(
         if nt_success(st) {
             shared::set_lock(lock);
             let config = unsafe { registry::read_config(driver_handle) };
-            shared::with(|s| s.config = config);
+            shared::with(|s| s.config.set(config));
         } else {
             println!("mkfilter: driver lock creation failed {st:#010x}");
         }
