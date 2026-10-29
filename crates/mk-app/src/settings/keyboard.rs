@@ -8,7 +8,7 @@ use mk_core::config::ModSource;
 use mk_core::model::Model;
 use mk_core::Config;
 
-use super::labels;
+use super::{labels, theme};
 use crate::appconfig::AppConfig;
 
 /// A setting reachable from a key on the drawing.
@@ -256,14 +256,14 @@ impl Mark {
     pub fn label(self) -> &'static str {
         match self {
             Mark::Fn => "Fn",
-            Mark::Special => "special key",
-            Mark::Remapped => "changed from default",
-            Mark::Launcher => "launches a program",
+            Mark::Special => "Special key",
+            Mark::Remapped => "Changed from default",
+            Mark::Launcher => "Opens a program",
         }
     }
 }
 
-fn mark(target: Target, config: &Config, app: &AppConfig) -> Option<Mark> {
+pub(super) fn mark(target: Target, config: &Config, app: &AppConfig) -> Option<Mark> {
     let defaults = Config::default();
     match target {
         Target::Modifier(ModSource::Fn)
@@ -294,34 +294,41 @@ struct Palette {
 fn palette(dark: bool) -> Palette {
     if dark {
         Palette {
-            case: Color32::from_gray(0x2C),
-            key: Color32::from_gray(0x44),
-            key_hover: Color32::from_gray(0x58),
-            edge: Color32::from_gray(0x1C),
-            text: Color32::from_gray(0xE8),
+            case: Color32::from_gray(0x2E),
+            key: Color32::from_gray(0x42),
+            key_hover: Color32::from_gray(0x55),
+            edge: Color32::from_gray(0x1E),
+            text: Color32::from_gray(0xEE),
         }
     } else {
         Palette {
-            case: Color32::from_gray(0xC9),
-            key: Color32::from_gray(0xFA),
-            key_hover: Color32::from_gray(0xE6),
-            edge: Color32::from_gray(0x9A),
-            text: Color32::from_gray(0x30),
+            case: Color32::from_gray(0xD4),
+            key: Color32::from_gray(0xFD),
+            key_hover: Color32::from_gray(0xEA),
+            edge: Color32::from_gray(0xA8),
+            text: Color32::from_gray(0x26),
         }
     }
 }
 
-/// Paints the keyboard at the available width. Returns the clicked configurable key and its
-/// screen rectangle.
+/// What a click on the drawing hit.
+pub enum Click {
+    Key(Target),
+    /// The case or a key without settings.
+    Nothing,
+}
+
+/// Paints the keyboard at the available width (centered, at most `max_unit` points per key).
 pub fn show(
     ui: &mut egui::Ui,
     layout: &Layout,
     config: &Config,
     app: &AppConfig,
     selected: Option<Target>,
-) -> Option<(Target, Rect)> {
+    max_unit: f32,
+) -> Option<Click> {
     let border = 0.35;
-    let unit = (ui.available_width() / (layout.width + 2.0 * border)).min(46.0);
+    let unit = (ui.available_width() / (layout.width + 2.0 * border)).min(max_unit);
     let size = Vec2::new(layout.width + 2.0 * border, layout.height + 2.0 * border) * unit;
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let origin = rect.min + Vec2::splat(border * unit);
@@ -342,22 +349,26 @@ pub fn show(
         .cloned();
 
     let colors = palette(ui.visuals().dark_mode);
+    let accent = theme::palette(ui.visuals().dark_mode);
     let painter = ui.painter_at(rect);
     painter.rect_filled(rect, CornerRadius::same((unit * 0.35) as u8), colors.case);
     let radius = CornerRadius::same((unit * 0.12).max(2.0) as u8);
     for k in &layout.keys {
         let r = key_rect(k);
+        let is_selected = k.target.is_some() && k.target == selected;
         let is_hovered = hovered.as_ref().is_some_and(|h| h.x == k.x && h.y == k.y);
-        let fill = if is_hovered {
-            colors.key_hover
+        let (fill, text) = if is_selected {
+            (accent.accent, accent.on_accent)
+        } else if is_hovered {
+            (colors.key_hover, colors.text)
         } else {
-            colors.key
+            (colors.key, colors.text)
         };
         painter.rect_filled(r, radius, fill);
         let mark = k.target.and_then(|t| mark(t, config, app));
         let (stroke_color, width) = match mark {
-            Some(m) => (m.color(), (unit * 0.07).max(2.0)),
-            None => (colors.edge, 1.0),
+            Some(m) if !is_selected => (m.color(), (unit * 0.06).max(1.5)),
+            _ => (colors.edge, 1.0),
         };
         painter.rect_stroke(
             r,
@@ -365,24 +376,22 @@ pub fn show(
             Stroke::new(width, stroke_color),
             StrokeKind::Inside,
         );
-        if k.target.is_some() && k.target == selected {
-            painter.rect_stroke(
-                r.expand(unit * 0.04),
-                radius,
-                Stroke::new((unit * 0.09).max(2.5), ui.visuals().selection.stroke.color),
-                StrokeKind::Outside,
-            );
+        // A dot as well as the outline, so the marks do not rely on color alone.
+        if let Some(m) = mark {
+            let d = (unit * 0.07).max(2.5);
+            let dot = r.right_top() + Vec2::new(-d - unit * 0.08, d + unit * 0.08);
+            let color = if is_selected {
+                accent.on_accent
+            } else {
+                m.color()
+            };
+            painter.circle_filled(dot, d, color);
         }
         if !k.label.is_empty() {
-            let font =
-                FontId::proportional((unit * if k.label.len() > 3 { 0.24 } else { 0.32 }).max(7.0));
-            painter.text(
-                r.center(),
-                egui::Align2::CENTER_CENTER,
-                k.label,
-                font,
-                colors.text,
+            let font = FontId::proportional(
+                (unit * if k.label.len() > 3 { 0.24 } else { 0.32 }).max(10.0),
             );
+            painter.text(r.center(), egui::Align2::CENTER_CENTER, k.label, font, text);
         }
     }
 
@@ -395,27 +404,24 @@ pub fn show(
             });
         }
     }
-    if response.clicked() {
-        if let Some(key) = hovered {
-            return key.target.map(|t| (t, key_rect(&key)));
-        }
-    }
-    None
+    response
+        .clicked()
+        .then(|| match hovered.and_then(|k| k.target) {
+            Some(target) => Click::Key(target),
+            None => Click::Nothing,
+        })
 }
 
 /// Legend of the highlight colors.
 pub fn legend(ui: &mut egui::Ui) {
-    ui.horizontal_wrapped(|ui| {
+    let subtle = theme::palette(ui.visuals().dark_mode).subtle;
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 6.0;
         for m in Mark::ALL {
-            let (rect, _) = ui.allocate_exact_size(Vec2::splat(12.0), Sense::hover());
-            ui.painter().rect_stroke(
-                rect,
-                CornerRadius::same(2),
-                Stroke::new(2.5_f32, m.color()),
-                StrokeKind::Inside,
-            );
-            ui.weak(m.label());
-            ui.add_space(8.0);
+            let (rect, _) = ui.allocate_exact_size(Vec2::splat(10.0), Sense::hover());
+            ui.painter().circle_filled(rect.center(), 4.0, m.color());
+            ui.label(egui::RichText::new(m.label()).small().color(subtle));
+            ui.add_space(12.0);
         }
     });
 }

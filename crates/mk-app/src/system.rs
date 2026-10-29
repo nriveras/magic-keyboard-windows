@@ -109,6 +109,27 @@ pub fn light_taskbar() -> bool {
     status == 0 && data != 0
 }
 
+/// The Windows accent color as (r, g, b), if set.
+pub fn accent_color() -> Option<(u8, u8, u8)> {
+    let key = wide("Software\\Microsoft\\Windows\\DWM");
+    let value = wide("AccentColor");
+    let mut data = 0u32;
+    let mut size = 4u32;
+    let status = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            key.as_ptr(),
+            value.as_ptr(),
+            RRF_RT_REG_DWORD,
+            null_mut(),
+            (&raw mut data).cast(),
+            &mut size,
+        )
+    };
+    // Stored as 0xAABBGGRR.
+    (status == 0).then_some((data as u8, (data >> 8) as u8, (data >> 16) as u8))
+}
+
 /// Opens a program (with optional arguments, see [`command::split`]) or document the way
 /// Explorer would. The calling thread must have initialized COM.
 pub fn launch(target: &str) -> std::io::Result<()> {

@@ -61,6 +61,7 @@ Milestones from the project plan. Each completed item is committed to git.
 - [x] Hardware test: settings window
 - [x] Keyboard-centric settings layout: tab per connected keyboard, drawn per-model keyboard with clickable keys (popup controls), grouped panels, modifier row laid out like the keyboard; launchers can be disabled; system fonts
 - [x] Hardware test: keyboard-centric settings layout
+- [x] Settings redesign (Windows 11 look): device pills + battery in the header, drawing on top, key inspector side panel, setting cards with toggles, labeled modifier pairs + preset detection, system accent color, light/dark; changes apply instantly (reset all asks first)
 
 ## M7 — Bluetooth
 - [x] Both models paired; BT hardware IDs + collections recorded (HID-NOTES); battery readable over BT

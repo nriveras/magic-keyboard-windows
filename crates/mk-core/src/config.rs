@@ -159,6 +159,14 @@ pub enum ModPreset {
     MacLikeShortcuts,
 }
 
+impl ModPreset {
+    pub const ALL: [ModPreset; 3] = [
+        ModPreset::WindowsPositions,
+        ModPreset::PcOrder,
+        ModPreset::MacLikeShortcuts,
+    ];
+}
+
 /// Number of configurable extended F-keys (F13–F19).
 pub const F_EXT_COUNT: usize = 7;
 
@@ -234,6 +242,15 @@ impl Config {
         ] {
             self.set_modifier(src, target);
         }
+    }
+
+    /// The preset the Option/Command/Control keys currently match, if any.
+    pub fn matching_preset(&self) -> Option<ModPreset> {
+        ModPreset::ALL.into_iter().find(|&preset| {
+            let mut cfg = *self;
+            cfg.apply_preset(preset);
+            cfg == *self
+        })
     }
 
     /// Default configuration adjusted for a keyboard model (Eject behaves as Fn on numpad models).
@@ -436,5 +453,16 @@ mod tests {
         assert_eq!(cfg.modifier(ModSource::RightOption), ModTarget::Win);
         cfg.apply_preset(ModPreset::WindowsPositions);
         assert_eq!(cfg, Config::default());
+    }
+
+    #[test]
+    fn matching_preset() {
+        let mut cfg = Config::default();
+        assert_eq!(cfg.matching_preset(), Some(ModPreset::WindowsPositions));
+        cfg.apply_preset(ModPreset::MacLikeShortcuts);
+        cfg.set_modifier(ModSource::CapsLock, ModTarget::Ctrl); // outside the preset's keys
+        assert_eq!(cfg.matching_preset(), Some(ModPreset::MacLikeShortcuts));
+        cfg.set_modifier(ModSource::RightOption, ModTarget::AltGr);
+        assert_eq!(cfg.matching_preset(), None);
     }
 }

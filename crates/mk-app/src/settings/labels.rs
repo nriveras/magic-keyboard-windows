@@ -31,8 +31,8 @@ pub fn choice<T: Copy + PartialEq>(
 
 pub fn fn_mode_label(m: FnMode) -> &'static str {
     match m {
-        FnMode::MediaFirst => "Media keys (hold Fn for F1–F12)",
-        FnMode::FKeysFirst => "F1–F12 (hold Fn for media keys)",
+        FnMode::MediaFirst => "Media keys",
+        FnMode::FKeysFirst => "F1–F12",
     }
 }
 
@@ -63,7 +63,7 @@ pub fn clear_label(a: ClearAction) -> &'static str {
 
 pub fn eject_label(a: EjectAction) -> &'static str {
     match a {
-        EjectAction::Delete => "Delete (Fn + Eject = Insert)",
+        EjectAction::Delete => "Delete",
         EjectAction::Fn => "Extra Fn key",
         EjectAction::Disabled => "Nothing",
     }
@@ -72,23 +72,23 @@ pub fn eject_label(a: EjectAction) -> &'static str {
 pub fn double_tap_label(a: FnDoubleTap) -> &'static str {
     match a {
         FnDoubleTap::Off => "Nothing",
-        FnDoubleTap::ToggleFnLock => "Switch the top-row mode",
+        FnDoubleTap::ToggleFnLock => "Switch top-row mode",
         FnDoubleTap::Dictation => "Dictation (Win+H)",
     }
 }
 
 pub fn target_label(t: ModTarget) -> &'static str {
     match t {
-        ModTarget::Ctrl => "ctrl",
-        ModTarget::Shift => "shift",
-        ModTarget::Alt => "alt",
-        ModTarget::Win => "win",
-        ModTarget::AltGr => "altgr",
-        ModTarget::CapsLock => "caps",
-        ModTarget::Fn => "fn",
-        ModTarget::Menu => "menu",
-        ModTarget::Insert => "insert",
-        ModTarget::Disabled => "nothing",
+        ModTarget::Ctrl => "Ctrl",
+        ModTarget::Shift => "Shift",
+        ModTarget::Alt => "Alt",
+        ModTarget::Win => "Win",
+        ModTarget::AltGr => "AltGr",
+        ModTarget::CapsLock => "Caps Lock",
+        ModTarget::Fn => "Fn",
+        ModTarget::Menu => "Menu",
+        ModTarget::Insert => "Insert",
+        ModTarget::Disabled => "Nothing",
     }
 }
 
@@ -118,7 +118,7 @@ pub fn f_ext_label(usage: u8, index: usize) -> String {
     }
 }
 
-/// Heading of a key's popup.
+/// Name of the key a target belongs to.
 pub fn title(target: Target) -> String {
     match target {
         Target::Modifier(src) => src.label().to_string(),
@@ -131,26 +131,44 @@ pub fn title(target: Target) -> String {
     }
 }
 
-/// One-line description of what a key currently does (hover text on the drawing).
-pub fn summary(target: Target, config: &Config, app: &AppConfig) -> String {
-    let result = match target {
+/// What the key's setting controls, shown under its name in the inspector.
+pub fn description(target: Target) -> &'static str {
+    match target {
+        Target::Modifier(_) => "The key Windows receives when you press it.",
+        Target::TopRow => "What the top row does without Fn. Hold Fn for the other function.",
+        Target::F6 => "The top-row mode, and what F6 does in media mode.",
+        Target::Lock => "The key in the top-right corner (Touch ID).",
+        Target::Eject => "The key in the top-right corner. Fn + Eject = Insert.",
+        Target::Clear => "The top-left key of the numeric keypad.",
+        Target::FExt(i) if i >= 3 => "Open a program, file or web address with this key.",
+        Target::FExt(_) => "PC keyboards have these keys here.",
+    }
+}
+
+/// What a key's own setting currently is (for F6, its media-mode action).
+pub fn value(target: Target, config: &Config, app: &AppConfig) -> String {
+    match target {
         Target::Modifier(src) => target_label(config.modifier(src)).to_string(),
         Target::TopRow => fn_mode_label(config.fn_mode).to_string(),
-        Target::F6 => format!(
-            "{} ({})",
-            f6_label(config.f6),
-            fn_mode_label(config.fn_mode)
-        ),
+        Target::F6 => f6_label(config.f6).to_string(),
         Target::Lock => lock_label(config.lock).to_string(),
         Target::Eject => eject_label(config.eject).to_string(),
         Target::Clear => clear_label(config.clear).to_string(),
         Target::FExt(i) if i >= 3 => match app.launcher(usize::from(i - 3)) {
-            Some(target) => format!("opens {target}"),
+            Some(target) => format!("Opens {target}"),
             None => format!("F{} (itself)", 13 + i),
         },
         Target::FExt(i) => f_ext_label(config.f_ext[usize::from(i)], usize::from(i)),
-    };
-    format!("{} → {result}  (click to change)", title(target))
+    }
+}
+
+/// One-line description of what a key currently does (hover text on the drawing).
+pub fn summary(target: Target, config: &Config, app: &AppConfig) -> String {
+    let value = value(target, config, app);
+    match target {
+        Target::F6 => format!("F6 → {value} ({})", fn_mode_label(config.fn_mode)),
+        _ => format!("{} → {value}", title(target)),
+    }
 }
 
 /// Reference of every built-in combination.
