@@ -65,10 +65,10 @@ pub(crate) fn interface_paths(guid: &GUID) -> io::Result<Vec<String>> {
     }
 }
 
-pub(crate) fn describe(h: HANDLE, path: &str) -> Option<Collection> {
+pub(crate) fn describe(h: HANDLE, path: &str, keep_vendor: fn(u16) -> bool) -> Option<Collection> {
     let mut attrs: hid::HIDD_ATTRIBUTES = unsafe { zeroed() };
     attrs.Size = size_of::<hid::HIDD_ATTRIBUTES>() as u32;
-    if !unsafe { hid::HidD_GetAttributes(h, &mut attrs) } {
+    if !unsafe { hid::HidD_GetAttributes(h, &mut attrs) } || !keep_vendor(attrs.VendorID) {
         return None;
     }
     let mut pp: hid::PHIDP_PREPARSED_DATA = 0;
@@ -81,15 +81,6 @@ pub(crate) fn describe(h: HANDLE, path: &str) -> Option<Collection> {
     if st != HIDP_STATUS_SUCCESS {
         return None;
     }
-    let mut name = [0u16; 128];
-    let product = if unsafe {
-        hid::HidD_GetProductString(h, name.as_mut_ptr().cast(), size_of::<[u16; 128]>() as u32)
-    } {
-        let end = name.iter().position(|c| *c == 0).unwrap_or(name.len());
-        Some(String::from_utf16_lossy(&name[..end]))
-    } else {
-        None
-    };
     Some(Collection {
         path: path.to_string(),
         vid: attrs.VendorID,
@@ -100,7 +91,6 @@ pub(crate) fn describe(h: HANDLE, path: &str) -> Option<Collection> {
         input_len: caps.InputReportByteLength,
         output_len: caps.OutputReportByteLength,
         feature_len: caps.FeatureReportByteLength,
-        product,
     })
 }
 

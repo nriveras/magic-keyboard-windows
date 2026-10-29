@@ -11,6 +11,7 @@ mod keyboard;
 mod labels;
 mod panels;
 
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Color32, RichText};
@@ -78,7 +79,10 @@ struct Settings {
     /// Index into `keyboards` (0 when none is connected).
     tab: usize,
     keyboards: Vec<Keyboard>,
-    refreshed: Instant,
+    /// Start of the last device poll (`None` = not polled yet).
+    refreshed: Option<Instant>,
+    /// Result of the device poll in progress.
+    devices_rx: Option<mpsc::Receiver<Vec<Keyboard>>>,
     /// Driver config as last read or applied; `Err` if the driver is unreachable.
     driver: Result<Config, String>,
     edited: Config,
@@ -109,8 +113,9 @@ impl Settings {
         let app = appconfig::load();
         Settings {
             tab: 0,
-            keyboards: devices::connected(),
-            refreshed: Instant::now(),
+            keyboards: Vec::new(),
+            refreshed: None,
+            devices_rx: None,
             driver,
             edited,
             last_model,
@@ -171,13 +176,30 @@ impl Settings {
         self.keyboards.get(self.tab).and_then(|k| k.model)
     }
 
-    fn refresh_devices(&mut self) {
-        if self.refreshed.elapsed() >= REFRESH {
-            self.keyboards = devices::connected();
-            self.refreshed = Instant::now();
-            if self.tab >= self.keyboards.len() {
-                self.tab = 0;
+    /// Polls the keyboards on a worker thread (battery reads can block) and picks up the result.
+    fn refresh_devices(&mut self, ctx: &egui::Context) {
+        if let Some(rx) = &self.devices_rx {
+            match rx.try_recv() {
+                Ok(keyboards) => {
+                    self.keyboards = keyboards;
+                    if self.tab >= self.keyboards.len() {
+                        self.tab = 0;
+                    }
+                    self.devices_rx = None;
+                }
+                Err(mpsc::TryRecvError::Empty) => return,
+                Err(mpsc::TryRecvError::Disconnected) => self.devices_rx = None,
             }
+        }
+        if self.refreshed.is_none_or(|t| t.elapsed() >= REFRESH) {
+            self.refreshed = Some(Instant::now());
+            let (tx, rx) = mpsc::channel();
+            let ctx = ctx.clone();
+            std::thread::spawn(move || {
+                let _ = tx.send(devices::connected());
+                ctx.request_repaint();
+            });
+            self.devices_rx = Some(rx);
         }
     }
 
@@ -327,7 +349,7 @@ impl Settings {
 
 impl eframe::App for Settings {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.refresh_devices();
+        self.refresh_devices(ctx);
         ctx.request_repaint_after(REFRESH);
 
         egui::TopBottomPanel::top("tabs").show(ctx, |ui| {

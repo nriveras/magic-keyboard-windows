@@ -46,7 +46,7 @@ mod app {
     use std::cell::RefCell;
     use std::io;
     use std::ptr::{null, null_mut};
-    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
     use mk_core::config::FnMode;
     use mk_core::proto::Status;
@@ -83,6 +83,14 @@ mod app {
     const WM_TRAY: u32 = WM_APP + 1;
     /// Posted by the watcher thread when the driver status changed (or the hub came/went).
     const WM_DRIVER: u32 = WM_APP + 2;
+    /// Posted by the battery poll thread; `lparam` owns a `Box<Readings>`.
+    const WM_BATTERY: u32 = WM_APP + 4;
+
+    /// One reading per connected keyboard (short model name, battery).
+    type Readings = Vec<(&'static str, Battery)>;
+
+    /// A battery poll thread is running.
+    static POLLING: AtomicBool = AtomicBool::new(false);
     /// Registered "TaskbarCreated" message; outside `App` so the window procedure can match it
     /// even while the state is borrowed.
     static TASKBAR_CREATED: AtomicU32 = AtomicU32::new(0);
@@ -105,8 +113,7 @@ mod app {
         hwnd: HWND,
         icon: HICON,
         status: Option<Status>,
-        /// One reading per connected keyboard (short model name, battery).
-        batteries: Vec<(&'static str, Battery)>,
+        batteries: Readings,
         config: AppConfig,
         low_battery: LowBattery,
         /// Why a filtered keyboard is not running (driver blocked or failed), if one is not.
@@ -180,8 +187,8 @@ mod app {
         });
 
         refresh_driver();
-        refresh_battery();
         add_tray_icon();
+        poll_battery(hwnd);
         unsafe { SetTimer(hwnd, BATTERY_TIMER, BATTERY_POLL, None) };
         register_launchers(hwnd);
         spawn_watcher(hwnd as usize);
@@ -252,11 +259,27 @@ mod app {
         }
     }
 
-    fn refresh_battery() {
-        let readings: Vec<(&'static str, Battery)> = devices::connected()
-            .into_iter()
-            .filter_map(|k| k.battery.map(|b| (k.short_name(), b)))
-            .collect();
+    /// Reads the batteries on a worker thread (a Bluetooth GET_REPORT can block) and posts the
+    /// result as `WM_BATTERY`. Does nothing while a poll is still running.
+    fn poll_battery(hwnd: HWND) {
+        if POLLING.swap(true, Ordering::AcqRel) {
+            return;
+        }
+        let hwnd = hwnd as usize;
+        std::thread::spawn(move || {
+            let readings: Readings = devices::connected()
+                .into_iter()
+                .filter_map(|k| k.battery.map(|b| (k.short_name(), b)))
+                .collect();
+            let boxed = Box::into_raw(Box::new(readings));
+            if unsafe { PostMessageW(hwnd as HWND, WM_BATTERY, 0, boxed as LPARAM) } == 0 {
+                drop(unsafe { Box::from_raw(boxed) });
+                POLLING.store(false, Ordering::Release);
+            }
+        });
+    }
+
+    fn apply_battery(readings: Readings) {
         let warn = with_app(|a| {
             a.batteries = readings;
             // The weakest keyboard that is running on battery.
@@ -529,15 +552,22 @@ mod app {
                 update_tray_icon();
                 0
             }
+            WM_BATTERY => {
+                // SAFETY: posted by poll_battery with a leaked Box<Readings>; taken back once.
+                let readings = *unsafe { Box::from_raw(lparam as *mut Readings) };
+                POLLING.store(false, Ordering::Release);
+                apply_battery(readings);
+                0
+            }
             WM_RELOAD => {
                 with_app(|a| a.config = appconfig::load());
                 register_launchers(hwnd);
-                refresh_battery();
+                poll_battery(hwnd);
                 0
             }
             WM_TIMER if wparam == BATTERY_TIMER => {
                 refresh_driver();
-                refresh_battery();
+                poll_battery(hwnd);
                 0
             }
             WM_HOTKEY => {

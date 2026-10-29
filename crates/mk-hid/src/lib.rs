@@ -32,7 +32,6 @@ pub struct Collection {
     pub input_len: u16,
     pub output_len: u16,
     pub feature_len: u16,
-    pub product: Option<String>,
 }
 
 impl Collection {
@@ -137,19 +136,21 @@ fn open_raw(path: &str, access: u32) -> io::Result<HANDLE> {
 
 /// Lists all HID collections whose vendor is Apple (USB or Bluetooth vendor ID).
 pub fn apple_collections() -> io::Result<Vec<Collection>> {
-    Ok(all_collections()?
-        .into_iter()
-        .filter(|c| c.vid == mk_core::model::APPLE_USB_VID || c.vid == mk_core::model::APPLE_BT_VID)
-        .collect())
+    collections(|vid| vid == mk_core::model::APPLE_USB_VID || vid == mk_core::model::APPLE_BT_VID)
 }
 
 /// Lists every present HID collection that can be opened for attribute queries.
 pub fn all_collections() -> io::Result<Vec<Collection>> {
+    collections(|_| true)
+}
+
+/// Collections whose vendor ID passes `keep_vendor`, checked before the costlier queries.
+fn collections(keep_vendor: fn(u16) -> bool) -> io::Result<Vec<Collection>> {
     let mut out = Vec::new();
     for path in ffi::hid_interface_paths()? {
         // Access 0 = query only; works even for collections opened exclusively by Windows.
         let Ok(h) = open_raw(&path, 0) else { continue };
-        if let Some(c) = ffi::describe(h, &path) {
+        if let Some(c) = ffi::describe(h, &path, keep_vendor) {
             out.push(c);
         }
         unsafe { CloseHandle(h) };
