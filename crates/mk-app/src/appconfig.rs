@@ -30,7 +30,7 @@ impl AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         AppConfig {
-            low_battery: 20,
+            low_battery: 15,
             launchers_enabled: [true; LAUNCHER_COUNT],
             launchers: [
                 "explorer.exe".into(),
@@ -70,6 +70,12 @@ pub fn save(config: &AppConfig) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn low_battery_default_matches_spec() {
+        // SPEC BAT-02: default threshold 15 %.
+        assert_eq!(AppConfig::default().low_battery, 15);
+    }
 
     #[test]
     fn toml_roundtrip_and_partial_files() {

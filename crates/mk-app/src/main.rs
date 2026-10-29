@@ -22,6 +22,8 @@ mod devices;
 mod health;
 #[cfg(windows)]
 mod icon;
+#[cfg_attr(not(windows), allow(dead_code))]
+mod lowbattery;
 #[cfg(windows)]
 mod settings;
 #[cfg_attr(not(windows), allow(dead_code))]
@@ -73,6 +75,7 @@ mod app {
     use crate::devices;
     use crate::health;
     use crate::icon::{self, Level};
+    use crate::lowbattery::LowBattery;
     use crate::slot::with_slot;
     use crate::system::{self, wide, TRAY_CLASS, WM_RELOAD};
     use crate::watch::{self, StatusSource};
@@ -105,8 +108,7 @@ mod app {
         /// One reading per connected keyboard (short model name, battery).
         batteries: Vec<(&'static str, Battery)>,
         config: AppConfig,
-        /// The low-battery warning was shown; re-armed when charging or above threshold + 5.
-        low_warned: bool,
+        low_battery: LowBattery,
         /// Why a filtered keyboard is not running (driver blocked or failed), if one is not.
         failure: Option<String>,
         failure_notified: bool,
@@ -171,7 +173,7 @@ mod app {
                 status: None,
                 batteries: Vec::new(),
                 config: appconfig::load(),
-                low_warned: false,
+                low_battery: LowBattery::default(),
                 failure: None,
                 failure_notified: false,
             })
@@ -257,30 +259,16 @@ mod app {
             .collect();
         let warn = with_app(|a| {
             a.batteries = readings;
-            let threshold = a.config.low_battery;
             // The weakest keyboard that is running on battery.
             let lowest = a
                 .batteries
                 .iter()
                 .filter(|(_, b)| !b.charging)
-                .min_by_key(|(_, b)| b.percent)
-                .map(|(name, b)| (*name, b.percent));
-            match lowest {
-                Some((name, percent)) if threshold > 0 && percent <= threshold => {
-                    let first = !a.low_warned;
-                    a.low_warned = true;
-                    first.then_some((name, percent))
-                }
-                Some((_, percent)) if percent > threshold.saturating_add(5) => {
-                    a.low_warned = false;
-                    None
-                }
-                None => {
-                    a.low_warned = false;
-                    None
-                }
-                _ => None,
-            }
+                .min_by_key(|(_, b)| b.percent);
+            let name = lowest.map(|(name, _)| *name);
+            a.low_battery
+                .update(lowest.map(|(_, b)| b.percent), a.config.low_battery)
+                .zip(name)
         })
         .flatten();
         update_tray_icon();
