@@ -134,9 +134,18 @@ impl Settings {
 
     fn apply(&mut self) {
         let mut errors = Vec::new();
-        if self.driver.is_ok() {
-            match Control::open().and_then(|c| c.set_config(&self.edited)) {
-                Ok(()) => self.driver = Ok(self.edited),
+        // Only when a driver option was edited, so an app-only change never rewrites the driver.
+        if let Some(snapshot) = self.driver.clone().ok().filter(|c| *c != self.edited) {
+            let result = Control::open().and_then(|c| {
+                let current = c.config()?;
+                let config = driver_update(&snapshot, &self.edited, &current).unwrap_or(current);
+                c.set_config(&config).map(|()| config)
+            });
+            match result {
+                Ok(config) => {
+                    self.driver = Ok(config);
+                    self.edited = config;
+                }
                 Err(e) => errors.push(format!("driver: {e}")),
             }
         }
@@ -399,5 +408,39 @@ impl eframe::App for Settings {
             .resizable(false)
             .collapsible(false)
             .show(ctx, labels::cheat_sheet);
+    }
+}
+
+/// The config to send when Apply is clicked: `None` if no driver option was edited since the
+/// window read `snapshot`; otherwise only the edited fields, applied to the driver's `current`
+/// config so changes made meanwhile (tray menu, Fn double-tap) are kept.
+fn driver_update(snapshot: &Config, edited: &Config, current: &Config) -> Option<Config> {
+    (edited != snapshot).then(|| current.merge_changes(snapshot, edited))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use mk_core::config::{FnMode, ModSource, ModTarget};
+
+    #[test]
+    fn app_only_changes_do_not_touch_the_driver() {
+        let snapshot = Config::default();
+        let mut current = snapshot;
+        current.fn_mode = FnMode::FKeysFirst; // switched from the tray while the window was open
+        assert_eq!(driver_update(&snapshot, &snapshot, &current), None);
+    }
+
+    #[test]
+    fn driver_changes_keep_changes_made_elsewhere() {
+        let snapshot = Config::default();
+        let mut current = snapshot;
+        current.fn_mode = FnMode::FKeysFirst;
+        let mut edited = snapshot;
+        edited.set_modifier(ModSource::LeftCommand, ModTarget::Ctrl);
+
+        let sent = driver_update(&snapshot, &edited, &current).expect("driver change");
+        assert_eq!(sent.fn_mode, FnMode::FKeysFirst);
+        assert_eq!(sent.modifier(ModSource::LeftCommand), ModTarget::Ctrl);
     }
 }

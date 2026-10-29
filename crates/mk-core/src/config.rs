@@ -244,6 +244,33 @@ impl Config {
         }
         cfg
     }
+
+    /// Applies to `self` only the fields that differ between `base` and `edited`, so changes made
+    /// elsewhere since `base` was read (e.g. the top-row mode from the tray) are kept.
+    pub fn merge_changes(&self, base: &Config, edited: &Config) -> Config {
+        fn pick<T: PartialEq + Copy>(current: T, base: T, edited: T) -> T {
+            if edited != base {
+                edited
+            } else {
+                current
+            }
+        }
+        let mut out = *self;
+        out.fn_mode = pick(self.fn_mode, base.fn_mode, edited.fn_mode);
+        out.f6 = pick(self.f6, base.f6, edited.f6);
+        out.clear = pick(self.clear, base.clear, edited.clear);
+        out.lock = pick(self.lock, base.lock, edited.lock);
+        out.eject = pick(self.eject, base.eject, edited.eject);
+        out.fn_double_tap = pick(self.fn_double_tap, base.fn_double_tap, edited.fn_double_tap);
+        out.sleep_combo = pick(self.sleep_combo, base.sleep_combo, edited.sleep_combo);
+        for (i, m) in out.modifiers.iter_mut().enumerate() {
+            *m = pick(*m, base.modifiers[i], edited.modifiers[i]);
+        }
+        for (i, k) in out.f_ext.iter_mut().enumerate() {
+            *k = pick(*k, base.f_ext[i], edited.f_ext[i]);
+        }
+        out
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -332,6 +359,42 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn merge_changes_keeps_fields_changed_elsewhere() {
+        let base = Config::default();
+        let mut current = base;
+        current.fn_mode = FnMode::FKeysFirst; // switched from the tray meanwhile
+        current.f_ext[0] = 0;
+        let mut edited = base;
+        edited.set_modifier(ModSource::LeftCommand, ModTarget::Ctrl);
+        edited.f_ext[1] = kbd::F13;
+
+        let merged = current.merge_changes(&base, &edited);
+        assert_eq!(merged.fn_mode, FnMode::FKeysFirst);
+        assert_eq!(merged.f_ext[0], 0);
+        assert_eq!(merged.f_ext[1], kbd::F13);
+        assert_eq!(merged.modifier(ModSource::LeftCommand), ModTarget::Ctrl);
+        assert_eq!(merged.modifier(ModSource::LeftOption), ModTarget::Alt);
+    }
+
+    #[test]
+    fn merge_changes_applies_every_edited_field() {
+        let base = Config::default();
+        let edited = Config {
+            fn_mode: FnMode::FKeysFirst,
+            f6: F6Action::None,
+            clear: ClearAction::Delete,
+            lock: LockAction::Insert,
+            eject: EjectAction::Fn,
+            fn_double_tap: FnDoubleTap::Dictation,
+            sleep_combo: false,
+            modifiers: [ModTarget::Disabled; ModSource::COUNT],
+            f_ext: [0; F_EXT_COUNT],
+        };
+        assert_eq!(base.merge_changes(&base, &edited), edited);
+        assert_eq!(edited.merge_changes(&base, &base), edited, "nothing edited");
+    }
 
     #[test]
     fn wire_roundtrip() {
