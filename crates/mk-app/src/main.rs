@@ -16,6 +16,8 @@ fn main() {
 }
 
 mod appconfig;
+#[cfg_attr(not(windows), allow(dead_code))]
+mod command;
 #[cfg(windows)]
 mod devices;
 #[cfg(windows)]
@@ -53,6 +55,9 @@ mod app {
     use mk_hid::battery::Battery;
     use mk_hid::control::Control;
     use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM};
+    use windows_sys::Win32::System::Com::{
+        CoInitializeEx, COINIT_APARTMENTTHREADED, COINIT_DISABLE_OLE1DDE,
+    };
     use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
         RegisterHotKey, UnregisterHotKey, MOD_NOREPEAT, VK_F16, VK_F17, VK_F18, VK_F19,
@@ -171,6 +176,13 @@ mod app {
         if hwnd.is_null() {
             return;
         }
+        // ShellExecute (launchers) needs COM on this thread.
+        unsafe {
+            CoInitializeEx(
+                null(),
+                (COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE) as u32,
+            )
+        };
         let taskbar_created = unsafe { RegisterWindowMessageW(wide("TaskbarCreated").as_ptr()) };
         TASKBAR_CREATED.store(taskbar_created, Ordering::Relaxed);
         APP.with(|a| {
@@ -571,14 +583,15 @@ mod app {
                 0
             }
             WM_HOTKEY => {
-                let target = with_app(|a| {
-                    a.config
-                        .launcher(wparam.wrapping_sub(1))
-                        .map(str::to_string)
-                })
-                .flatten();
+                let index = wparam.wrapping_sub(1);
+                let target = with_app(|a| a.config.launcher(index).map(str::to_string)).flatten();
                 if let Some(target) = target {
-                    system::launch(&target);
+                    if let Err(e) = system::launch(&target) {
+                        notify(
+                            &format!("F{} launcher failed", 16 + index),
+                            &format!("Could not open {target}: {e}"),
+                        );
+                    }
                 }
                 0
             }

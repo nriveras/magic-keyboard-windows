@@ -13,6 +13,8 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     FindWindowW, PostMessageW, SW_SHOWNORMAL, WM_APP,
 };
 
+use crate::command;
+
 /// Window class of the tray's hidden window.
 pub const TRAY_CLASS: &str = "MagicKeyboardWindowsTray";
 /// Posted to the tray window when app.toml changed.
@@ -107,18 +109,27 @@ pub fn light_taskbar() -> bool {
     status == 0 && data != 0
 }
 
-/// Opens a program or document the way Explorer would.
-pub fn launch(target: &str) {
-    let (verb, file) = (wide("open"), wide(target));
-    unsafe {
+/// Opens a program (with optional arguments, see [`command::split`]) or document the way
+/// Explorer would. The calling thread must have initialized COM.
+pub fn launch(target: &str) -> std::io::Result<()> {
+    let (file, args) = command::split(target);
+    let (verb, file) = (wide("open"), wide(file));
+    let args = args.map(wide);
+    let result = unsafe {
         ShellExecuteW(
             null_mut(),
             verb.as_ptr(),
             file.as_ptr(),
-            null(),
+            args.as_ref().map_or(null(), |a| a.as_ptr()),
             null(),
             SW_SHOWNORMAL,
-        );
+        )
+    };
+    // Values above 32 mean success.
+    if result as isize > 32 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
     }
 }
 
