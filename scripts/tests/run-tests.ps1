@@ -117,6 +117,16 @@ Test 'install-dev.ps1 refuses Windows builds older than the driver supports' {
     Assert ($text -match '22000') 'install-dev.ps1 does not require build 22000'
 }
 
+Test 'install-dev.ps1 installs the keyboard filter package last' {
+    # Both INFs register the same mkfilter service; its ImagePath points into the package installed
+    # last. It must be the keyboard package, which the keyboards depend on, not the hub package.
+    $text = Get-Content -Raw (Join-Path $scripts 'install-dev.ps1')
+    $hub = $text.IndexOf('Install-Inf $HubHardwareId $hubInf')
+    $filter = $text.IndexOf('Install-Inf $id $inf')
+    Assert ($hub -ge 0 -and $filter -ge 0) 'Install-Inf calls not found'
+    Assert ($hub -lt $filter) 'the hub package is installed after the keyboard package'
+}
+
 Test 'README states the Windows 11 requirement' {
     $text = Get-Content -Raw (Join-Path $root 'README.md')
     Assert ($text -match 'Windows 11') 'README does not mention Windows 11'

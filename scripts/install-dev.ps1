@@ -4,8 +4,8 @@
 #   - mkhub.inf on a root-enumerated ROOT\MagicKbdHub devnode (virtual HID device for media keys)
 #
 # Steps: check the Windows version and Secure Boot / test signing, create a restore point, trust the
-# cargo-wdk test certificate, force-install the filter INF, create the hub devnode if needed, install
-# the hub INF, and print the resulting devices.
+# cargo-wdk test certificate, create the hub devnode if needed, install the hub INF, force-install
+# the filter INF, and print the resulting devices.
 # Undo with scripts\uninstall-dev.cmd (double-click; works with the mouse alone).
 param(
     [ValidateSet('debug', 'release')]
@@ -126,13 +126,21 @@ function Get-HubDevices {
 }
 
 # --- Install -------------------------------------------------------------------------------
-foreach ($id in $presentIds) { Install-Inf $id $inf }
-
+# Both INFs register the one mkfilter service, and its ImagePath points into the DriverStore folder
+# of the package installed last. The keyboard package goes last: the keyboards must not depend on
+# the hub package, which Device Manager can remove on its own ("Attempt to remove the driver").
 if ((Get-HubDevices).Count -eq 0) {
     [MkDev.Native]::CreateRootDevice($HubHardwareId)
     Write-Host "Created $HubHardwareId devnode."
 }
 Install-Inf $HubHardwareId $hubInf
+
+foreach ($id in $presentIds) { Install-Inf $id $inf }
+
+$imagePath = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\mkfilter' -ErrorAction SilentlyContinue).ImagePath
+if ($imagePath -notlike '*\mkfilter.inf_*') {
+    Write-Warning "The mkfilter service points to '$imagePath', not the keyboard package. Run this script again."
+}
 
 # --- Report --------------------------------------------------------------------------------
 foreach ($d in @($devices) + (Get-HubDevices)) {
