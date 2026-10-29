@@ -41,7 +41,8 @@ pub enum Action {
     },
     Consumer(u16),
     System(u8),
-    /// Shortcut held on the virtual keyboard.
+    /// Shortcut tapped once on the virtual keyboard when the key goes down; holding the key does
+    /// not repeat it.
     Combo {
         mods: u8,
         key: u8,
@@ -192,6 +193,15 @@ impl Engine {
                 } else {
                     // A deferred double-tap may have just changed the Fn mode.
                     action = self.resolve(p);
+                }
+                if let Action::Combo { mods, key } = action {
+                    // Tapped now; the key then holds nothing. An earlier pulse in this report wins.
+                    if out.pulse.is_none() {
+                        let mut keys = KeyList::new();
+                        keys.push(key);
+                        out.pulse = Some(KbdReport { mods, keys });
+                    }
+                    action = Action::None;
                 }
                 self.push_latch(p, action);
             }

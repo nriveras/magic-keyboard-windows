@@ -189,15 +189,33 @@ fn shift_media_variants() {
 }
 
 #[test]
-fn win_shortcuts_go_to_virtual_keyboard() {
+fn win_shortcuts_are_tapped_once_on_the_virtual_keyboard() {
     let mut h = H::new();
     let out = h.send(ks(&[0x3C])); // F3
-    assert_eq!(out.virt_keyboard, virt(modbits::LGUI, kbd::TAB));
-    assert!(out.virt_keyboard_changed);
+    assert_eq!(out.pulse, Some(virt(modbits::LGUI, kbd::TAB)));
+    assert_eq!(out.virt_keyboard, KbdReport::default(), "not held");
+    assert!(!out.virt_keyboard_changed);
+    assert!(out.any_virtual_change());
     assert!(keys(&out).is_empty());
+    // Holding the key must not repeat the shortcut (Task View would toggle open and closed).
+    let out = h.send(ks(&[0x3C]));
+    assert_eq!(out.pulse, None);
+    assert!(!out.any_virtual_change());
     let out = h.send(none());
-    assert_eq!(out.virt_keyboard, KbdReport::default());
-    assert!(out.virt_keyboard_changed);
+    assert_eq!(out.pulse, None);
+    assert!(!out.any_virtual_change());
+}
+
+#[test]
+fn every_shortcut_is_a_one_shot() {
+    for (key, shortcut) in [(0x3C, kbd::TAB), (0x3D, kbd::S), (0x3E, kbd::H)] {
+        let mut h = H::new();
+        assert_eq!(
+            h.send(ks(&[key])).pulse,
+            Some(virt(modbits::LGUI, shortcut))
+        );
+        assert_eq!(h.send(ks(&[key])).virt_keyboard, KbdReport::default());
+    }
 }
 
 #[test]
@@ -210,10 +228,7 @@ fn f6_options() {
 
     cfg.f6 = F6Action::DoNotDisturb;
     let mut h = H::with(cfg);
-    assert_eq!(
-        h.send(ks(&[0x3F])).virt_keyboard,
-        virt(modbits::LGUI, kbd::N)
-    );
+    assert_eq!(h.send(ks(&[0x3F])).pulse, Some(virt(modbits::LGUI, kbd::N)));
 
     cfg.f6 = F6Action::None;
     let mut h = H::with(cfg);
@@ -442,8 +457,9 @@ fn lock_key_locks_workstation() {
     let mut s = none();
     s.lock = true;
     let out = h.send(s);
-    assert_eq!(out.virt_keyboard, virt(modbits::LGUI, kbd::L));
+    assert_eq!(out.pulse, Some(virt(modbits::LGUI, kbd::L)));
     assert!(keys(&out).is_empty());
+    assert_eq!(h.send(s).pulse, None, "held Lock key locks once");
 
     let mut cfg = Config::default();
     cfg.lock = LockAction::Insert;
@@ -664,7 +680,6 @@ fn release_all_clears_virtual_devices() {
     h.e.release_all(&mut out);
     assert!(consumer(&out).is_empty() && out.consumer_changed);
     assert_eq!(out.virt_keyboard, KbdReport::default());
-    assert!(out.virt_keyboard_changed);
 }
 
 #[test]
