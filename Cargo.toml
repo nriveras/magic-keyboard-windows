@@ -8,8 +8,9 @@ exclude = ["driver/mkfilter"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
+authors = ["nriveras"]
 license = "MIT"
-repository = "local"
+repository = "https://github.com/nriveras/magic-keyboard-windows"
 rust-version = "1.85"  # eframe 0.32
 
 [workspace.dependencies]

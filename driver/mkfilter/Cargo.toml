@@ -3,7 +3,9 @@ name = "mkfilter"
 description = "KMDF lower filter for the Apple Magic Keyboard keyboard collection"
 version = "0.1.0"
 edition = "2024"
+authors = ["nriveras"]
 license = "MIT"
+repository = "https://github.com/nriveras/magic-keyboard-windows"
 
 [package.metadata.wdk.driver-model]
 driver-type = "KMDF"

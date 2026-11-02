@@ -4,6 +4,8 @@ description = "Tray app for magic-keyboard-windows: battery, Fn mode, launchers,
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
