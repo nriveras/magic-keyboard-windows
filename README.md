@@ -41,11 +41,17 @@ The kernel driver is self-built and **test-signed**. Loading it requires:
 
 1. **Secure Boot off** (firmware settings).
 2. **Test-signing mode on**: in an administrator terminal run `bcdedit /set testsigning on`, then reboot.
-   Windows shows a "Test Mode" watermark; some anti-cheat software refuses to run in this mode.
+   Windows shows a "Test Mode" watermark.
 3. The build tools from [docs/DEV-SETUP.md](docs/DEV-SETUP.md) (Rust, Visual Studio Build Tools,
    WDK, cargo-wdk).
 
 If BitLocker is on, have your recovery key at hand before changing Secure Boot.
+
+> **Games with kernel-level anti-cheat may not run.** The driver is not signed by Microsoft, so it
+> needs Secure Boot off and test-signing mode on. Several anti-cheat systems refuse to start in that
+> configuration, for example **Riot Vanguard** (League of Legends, Valorant) and **FACEIT**; games
+> using Easy Anti-Cheat or BattlEye may also refuse, depending on the game. If you play such games,
+> this project is not for you until it has a Microsoft-signed driver or the planned driverless mode.
 
 > **Secure Boot must stay off while the driver is installed.** Windows checks driver signatures at
 > every boot: with Secure Boot back on, test mode is disabled, the driver is rejected (Device Manager
