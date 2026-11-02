@@ -2,15 +2,16 @@
 
 *Written 2026-10-28. Facts about Brigadier come from its [README](https://github.com/timsutton/brigadier).
 Claims about how Boot Camp behaves on a non-Mac PC with the A2520 come from user reports and have **not**
-been verified on our hardware. Those rows are marked ⚠️.*
+been verified on our hardware. Those rows are marked ⚠️. The "This project" column was updated on
+2026-11-02 to match the current state; see [PROGRESS.md](../PROGRESS.md).*
 
 ## What each one is
 
 | | **Brigadier + Boot Camp** | **magic-keyboard-windows (this project)** |
 |---|---|---|
 | What it is | Brigadier is a Python script (also shipped as a prebuilt `.exe`) that **downloads and unpacks Apple's Boot Camp driver packages (ESDs)** from Apple's software-update catalog. It writes no driver code of its own; the keyboard support comes from Apple's Boot Camp drivers. | A purpose-built Rust kernel filter driver plus a tray/settings app, written for Apple keyboards on any Windows PC. |
-| How you get it | `brigadier.exe -m <MacModel> [-i] [-o dir] [-k]`. It picks the package for a given **Mac model ID** (default: the current machine's) and can run the 64-bit MSI with `-i`. It uses 7-Zip and installs it temporarily if it's missing. | Build from source; install with dev scripts or `mk-install` (planned for M8). |
-| Intended target | **Macs running Windows** (Boot Camp). Running it on a regular PC is unofficial: you have to pass a Mac model ID to `-m`. | Regular Windows 10/11 PCs, and Macs too. |
+| How you get it | `brigadier.exe -m <MacModel> [-i] [-o dir] [-k]`. It picks the package for a given **Mac model ID** (default: the current machine's) and can run the 64-bit MSI with `-i`. It uses 7-Zip and installs it temporarily if it's missing. | Build from source with `scripts\install.ps1` (builds the driver and app, then installs both). |
+| Intended target | **Macs running Windows** (Boot Camp). Running it on a regular PC is unofficial: you have to pass a Mac model ID to `-m`. | Regular Windows 11 PCs, and Macs too. |
 | License | MIT for Brigadier. The Boot Camp drivers are proprietary Apple software. | MIT for everything. |
 | Source code | Brigadier's is open; Apple's drivers are closed binaries. | Fully open. |
 
@@ -22,22 +23,22 @@ Legend: ✅ supported · ❌ not supported · ⚠️ unverified or inconsistent 
 |---|---|---|
 | Driver signing / Secure Boot | ✅ **Apple-signed**; works with Secure Boot on. No test mode. | ❌ Self-signed. Needs **Secure Boot off + test-signing mode**, which shows a watermark and trips some anti-cheat. |
 | Works on non-Mac PCs | ⚠️ Unofficial. Apple only supports its drivers on Macs. | ✅ Designed for it. |
-| A2520 (Touch ID + numpad, PID 029F) support | ❌ **Not in the KeyMagic 6.1.6700 INF** (see spike result below). The driver doesn't bind, which fits the user reports of volume keys not working and the keyboard tab missing. | 🛠️ Primary test device. HID layout already mapped ([HID-NOTES](HID-NOTES.md)). |
-| Fn key detection | ✅ On supported models, inside Apple's driver. | 🛠️ Kernel filter reads usage `0x00FF:0x0003`. |
-| Media keys (F7–F9) | ⚠️ Needs the Boot Camp control-panel/tray process; reported broken on A2520. | 🛠️ Virtual HID device (VHF): handled natively by Windows, no app process required. |
-| Volume keys (F10–F12) | ⚠️ Reported not working on A2520. | 🛠️ Virtual consumer device; the keyboard itself has no volume usages. |
-| Brightness, Task View, Search, Dictation, Sleep/DND (F1–F6) | ⚠️ Partial. Brightness only targets Mac displays. | 🛠️ Full spec table. |
+| A2520 (Touch ID + numpad, PID 029F) support | ❌ **Not in the KeyMagic 6.1.6700 INF** (see spike result below). The driver doesn't bind, which fits the user reports of volume keys not working and the keyboard tab missing. | ✅ Primary test device, plus 029A. HID layout in [HID-NOTES](HID-NOTES.md). |
+| Fn key detection | ✅ On supported models, inside Apple's driver. | ✅ Kernel filter reads usage `0x00FF:0x0003` (USB) / `0xFF01:0x0003` (Bluetooth). |
+| Media keys (F7–F9) | ⚠️ Needs the Boot Camp control-panel/tray process; reported broken on A2520. | ✅ Virtual HID device (VHF): handled natively by Windows, no app process required. |
+| Volume keys (F10–F12) | ⚠️ Reported not working on A2520. | ✅ Virtual consumer device; the keyboard itself has no volume usages. |
+| Brightness, Task View, Search, Dictation, Sleep/DND (F1–F6) | ⚠️ Partial. Brightness only targets Mac displays. | ✅ Full spec table. |
 | Fn lock (media-first vs F-keys-first) | ✅ "Use F1, F2… as standard function keys" checkbox, when the control panel shows the keyboard tab. | ✅ Implemented in the engine; tray toggle and Fn double-tap. |
 | Missing PC keys (Del, Home/End, PgUp/PgDn, Insert, PrtSc, Pause, ScrLk) | ⚠️ Fn+⌫ = Delete and a few others. Coverage varies by version. | ✅ Implemented in the engine (the full Magic Utilities set). |
 | Ctrl+Alt+Del from the Apple keyboard | ⚠️ | ✅ Fn+Ctrl+Opt+⌫ (engine). |
-| F13–F19 (numpad models) | ⚠️ Passed through as F13–F19 at best. | ✅ F13–F15 → PrtSc/ScrLk/Pause; 🛠️ F16–F19 app launchers. |
-| Modifier remapping (Cmd/Opt/Ctrl/Caps/Fn) | ❌ No remapping UI. You need registry Scancode Map or third-party tools. | ✅ Any modifier → any target, plus presets (engine). 🛠️ settings UI. |
+| F13–F19 (numpad models) | ⚠️ Passed through as F13–F19 at best. | ✅ F13–F15 → PrtSc/ScrLk/Pause; F16–F19 app launchers. |
+| Modifier remapping (Cmd/Opt/Ctrl/Caps/Fn) | ❌ No remapping UI. You need registry Scancode Map or third-party tools. | ✅ Any modifier → any target, plus presets, from the settings window. |
 | Right ⌘ → AltGr (third characters) | ❌ | ✅ |
 | Clear key / Lock (Touch ID) key behaviour | ❌ / ⚠️ | ✅ Configurable. Lock defaults to Win+L. |
 | Touch ID fingerprint (Windows Hello) | ❌ | ❌ Out of scope; no one has this on Windows. |
-| Battery level / low-battery alerts | ⚠️ Battery shown on supported Macs/models. | 🛠️ Read from report 0x90 in user mode; tray display and toasts. |
-| USB **and** Bluetooth | ⚠️ Mainly Bluetooth. One report of A2520 crashing Windows 11 over BT. | 🛠️ One filter path for both transports (M7 validates BT). |
-| Works at the login screen | ✅ (driver level) | 🛠️ Yes. The driver stores its config in the registry, so the app isn't needed there. |
+| Battery level / low-battery alerts | ⚠️ Battery shown on supported Macs/models. | ✅ Read from report 0x90 in user mode; tray display and low-battery warning. |
+| USB **and** Bluetooth | ⚠️ Mainly Bluetooth. One report of A2520 crashing Windows 11 over BT. | ✅ One filter path for both transports, tested on both models. |
+| Works at the login screen | ✅ (driver level) | ✅ The driver stores its config in the registry, so the app isn't needed there. |
 | Keyboard layouts (Apple ISO/ANSI) | ✅ Boot Camp ships Apple layouts. | ❌ Out of scope. Use existing layouts such as those in supermarsx/magickeyboard. |
 | Magic Mouse / Trackpad | ✅ Some drivers included. | ❌ Out of scope. |
 
@@ -75,7 +76,7 @@ was unpacked without being run. It contains Apple's **KeyMagic** driver: `Keymag
   the one people use on PCs, the verdict above doesn't depend on it.
 
 **Conclusion:** for the A2520, Boot Camp is **not a working fallback**. The Secure-Boot-friendly fallback is
-the driverless mode in M8 (low-level hook, no Fn).
+a driverless mode (low-level hook, no Fn), planned but not built yet.
 
 ## Sources
 
