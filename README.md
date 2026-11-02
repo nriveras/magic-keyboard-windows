@@ -4,13 +4,16 @@ Open-source Rust driver + tray app that makes Apple Magic Keyboards fully usable
 Fn layer, media/volume/brightness keys, Fn lock, missing PC keys (Delete, Home/End, PgUp/PgDn, Insert,
 PrtSc …), F13–F19 actions, modifier remapping and battery monitoring.
 
-> **Status:** working over USB on the models below; Bluetooth support is in progress — see
-> [PROGRESS.md](PROGRESS.md).
+> **Status:** working over USB and Bluetooth on the models below — see [PROGRESS.md](PROGRESS.md).
 
-| Keyboard | USB ID | Status |
-|---|---|---|
-| Magic Keyboard with Touch ID and Numeric Keypad (2021) | 05AC:029F | tested (USB) |
-| Magic Keyboard with Touch ID (2021) | 05AC:029A | tested (USB) |
+| Keyboard | USB ID | Bluetooth ID | Status |
+|---|---|---|---|
+| Magic Keyboard with Touch ID and Numeric Keypad (2021) | 05AC:029F | 004C:029F | tested (USB, Bluetooth) |
+| Magic Keyboard with Touch ID (2021) | 05AC:029A | 004C:029A | tested (USB, Bluetooth) |
+
+Over Bluetooth the vendor ID is Apple's Bluetooth company ID (`004C`) instead of its USB vendor ID
+(`05AC`); the hardware IDs look like
+`HID\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004c_PID&029F`.
 
 ## What you get
 
