@@ -1,0 +1,30 @@
+name: New keyboard
+description: Ask for support for an Apple keyboard that isn't in the list yet
+labels: [new keyboard]
+body:
+  - type: input
+    id: model
+    attributes:
+      label: Keyboard model
+      description: Name and model number from the label underneath, e.g. "Magic Keyboard (2024), A3118"
+    validations:
+      required: true
+  - type: input
+    id: ids
+    attributes:
+      label: Hardware IDs
+      description: Device Manager → the keyboard → Properties → Details → Hardware Ids (USB and, if possible, Bluetooth)
+  - type: textarea
+    id: probe
+    attributes:
+      label: mk-probe output
+      description: |
+        Output of `cargo run -p mk-probe -- list` and `cargo run -p mk-probe -- caps` with the keyboard connected.
+        mk-probe only reads device descriptions, it doesn't record what you type.
+      render: text
+  - type: checkboxes
+    id: test
+    attributes:
+      label: Testing
+      options:
+        - label: I can test development builds on this keyboard

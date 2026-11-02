@@ -1,0 +1,53 @@
+name: Bug report
+description: Something doesn't work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If your keyboard stopped working entirely, double-click `scripts\uninstall.cmd` with the mouse first: the stock Windows driver comes back.
+        Security problems: please don't use this form, see SECURITY.md.
+  - type: dropdown
+    id: keyboard
+    attributes:
+      label: Keyboard
+      options:
+        - Magic Keyboard with Touch ID and Numeric Keypad (2021, 029F)
+        - Magic Keyboard with Touch ID (2021, 029A)
+        - Other (say which in the description)
+    validations:
+      required: true
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Connection
+      options:
+        - USB
+        - Bluetooth
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version and build
+      description: From `winver`, e.g. "Windows 11 24H2, build 26100.2314"
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: Commit or version
+      description: Output of `git rev-parse --short HEAD` in your copy
+  - type: input
+    id: tray
+    attributes:
+      label: What the tray icon says
+      description: Hover the tray icon and copy the driver and battery state
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead
+    validations:
+      required: true

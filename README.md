@@ -1,5 +1,8 @@
 # magic-keyboard-windows
 
+[![CI](https://github.com/nriveras/magic-keyboard-windows/actions/workflows/ci.yml/badge.svg)](https://github.com/nriveras/magic-keyboard-windows/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Open-source Rust driver + tray app that makes Apple Magic Keyboards fully usable on Windows:
 Fn layer, media/volume/brightness keys, Fn lock, missing PC keys (Delete, Home/End, PgUp/PgDn, Insert,
 PrtSc …), F13–F19 actions, modifier remapping and battery monitoring.
@@ -107,3 +110,19 @@ log every input report to the kernel debugger output — do not use them for dai
 - [HID notes](docs/HID-NOTES.md)
 - [Developer setup](docs/DEV-SETUP.md)
 - [Comparison with Brigadier + Boot Camp](docs/COMPARISON-BRIGADIER.md)
+
+## Contributing
+
+Bug reports, tests on other Apple keyboards and pull requests are welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md). Report security problems privately as described in
+[SECURITY.md](SECURITY.md).
+
+## License and disclaimer
+
+[MIT](LICENSE).
+
+This is an independent project, not affiliated with or endorsed by Apple Inc. Apple, Magic Keyboard
+and Touch ID are trademarks of Apple Inc., used here only to say which hardware the project works with.
+
+The software installs a test-signed kernel driver and is provided as is, without warranty of any kind.
+Read the Requirements section before installing; you use it at your own risk.
